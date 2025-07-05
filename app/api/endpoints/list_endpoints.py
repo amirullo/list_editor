@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List as TypeList, Dict, Any
+from typing import List as TypeList, Dict, Any, List
 
 from app.schemas.list_schema import (
     ListCreate, ListUpdate, ListInDB,
@@ -13,6 +13,7 @@ from app.api.dependencies import (
     get_list_service, get_item_service, get_lock_service,
     get_user_id, ensure_client_role, ensure_worker_role
 )
+from app.core.exceptions import NotFoundException, LockException
 
 router = APIRouter()
 
@@ -58,12 +59,15 @@ def get_list(
     """
     Get a specific list by ID
     """
-    list_obj = list_service.get_list(list_id)
-    return Response(
-        status="success",
-        message="List retrieved successfully",
-        data=list_obj
-    )
+    try:
+        list_obj = list_service.get_list(list_id)
+        return Response(
+            status="success",
+            message="List retrieved successfully",
+            data=list_obj
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.put("/{list_id}", response_model=Response[ListInDB])
 def update_list(
@@ -75,12 +79,17 @@ def update_list(
     """
     Update a list (requires worker role)
     """
-    updated_list = list_service.update_list(list_id, user_id, list_update)
-    return Response(
-        status="success",
-        message="List updated successfully",
-        data=updated_list
-    )
+    try:
+        updated_list = list_service.update_list(list_id, user_id, list_update)
+        return Response(
+            status="success",
+            message="List updated successfully",
+            data=updated_list
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 @router.delete("/{list_id}", response_model=Response[StatusMessage])
 def delete_list(
@@ -91,12 +100,17 @@ def delete_list(
     """
     Delete a list (requires worker role)
     """
-    result = list_service.delete_list(list_id, user_id)
-    return Response(
-        status="success",
-        message="List deleted successfully",
-        data={"message": "List deleted successfully"}
-    )
+    try:
+        result = list_service.delete_list(list_id, user_id)
+        return Response(
+            status="success",
+            message="List deleted successfully",
+            data={"message": "List deleted successfully"}
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 # Item endpoints
 @router.post("/{list_id}/items", response_model=Response[ItemInDB])
@@ -107,47 +121,83 @@ def create_item(
     user_id: str = Depends(ensure_worker_role)
 ):
     """
-    Add an item to a list (requires worker role)
+    Add an item to a specific list (requires worker role)
     """
-    item = item_service.create_item(list_id, user_id, item_create)
-    return Response(
-        status="success",
-        message="Item added successfully",
-        data=item
-    )
+    try:
+        item = item_service.create_item(list_id, item_create)
+        return Response(
+            status="success",
+            message="Item added successfully",
+            data=item
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
-@router.put("/items/{item_id}", response_model=Response[ItemInDB])
+@router.get("/{list_id}/items", response_model=Response[List[ItemInDB]])
+def get_items(
+    list_id: str,
+    item_service: ItemService = Depends(get_item_service),
+    user_id: str = Depends(get_user_id)
+):
+    """
+    Get all items in a specific list
+    """
+    try:
+        items = item_service.get_all_items(list_id)
+        return Response(
+            status="success",
+            message="Items retrieved successfully",
+            data=items
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.put("/{list_id}/items/{item_id}", response_model=Response[ItemInDB])
 def update_item(
+    list_id: str,
     item_id: str,
     item_update: ItemUpdate,
     item_service: ItemService = Depends(get_item_service),
     user_id: str = Depends(ensure_worker_role)
 ):
     """
-    Update an item (requires worker role)
+    Update an item in a specific list (requires worker role)
     """
-    updated_item = item_service.update_item(item_id, user_id, item_update)
-    return Response(
-        status="success",
-        message="Item updated successfully",
-        data=updated_item
-    )
+    try:
+        updated_item = item_service.update_item(list_id, item_id, item_update)
+        return Response(
+            status="success",
+            message="Item updated successfully",
+            data=updated_item
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
-@router.delete("/items/{item_id}", response_model=Response[StatusMessage])
+@router.delete("/{list_id}/items/{item_id}", response_model=Response[Dict])
 def delete_item(
+    list_id: str,
     item_id: str,
     item_service: ItemService = Depends(get_item_service),
     user_id: str = Depends(ensure_worker_role)
 ):
     """
-    Delete an item (requires worker role)
+    Delete an item from a specific list (requires worker role)
     """
-    result = item_service.delete_item(item_id, user_id)
-    return Response(
-        status="success",
-        message="Item deleted successfully",
-        data={"message": "Item deleted successfully"}
-    )
+    try:
+        item_service.delete_item(list_id, item_id)
+        return Response(
+            status="success",
+            message="Item deleted successfully",
+            data={"id": item_id}
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 # Lock endpoints
 @router.post("/{list_id}/lock", response_model=Response[StatusMessage])
@@ -159,12 +209,15 @@ def acquire_lock(
     """
     Acquire a lock on a list (requires worker role)
     """
-    lock = lock_service.acquire_lock(list_id, user_id)
-    return Response(
-        status="success",
-        message="Lock acquired successfully",
-        data={"message": "Lock acquired successfully"}
-    )
+    try:
+        lock = lock_service.acquire_lock(list_id, user_id)
+        return Response(
+            status="success",
+            message="Lock acquired successfully",
+            data={"message": "Lock acquired successfully"}
+        )
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 @router.delete("/{list_id}/lock", response_model=Response[StatusMessage])
 def release_lock(
@@ -175,9 +228,12 @@ def release_lock(
     """
     Release a lock on a list (requires worker role)
     """
-    result = lock_service.release_lock(list_id, user_id)
-    return Response(
-        status="success",
-        message="Lock released successfully",
-        data={"message": "Lock released successfully"}
-    )
+    try:
+        result = lock_service.release_lock(list_id, user_id)
+        return Response(
+            status="success",
+            message="Lock released successfully",
+            data={"message": "Lock released successfully"}
+        )
+    except LockException as e:
+        raise HTTPException(status_code=409, detail=str(e))

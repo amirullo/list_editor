@@ -1,6 +1,8 @@
 import requests
 import json
 import uuid
+import time
+from app.models.role_model import RoleType
 
 # Base URL of your FastAPI application
 BASE_URL = "http://localhost:8000"  # Adjust this if your server is running on a different port or host
@@ -17,7 +19,7 @@ headers = {
 def get_worker_role():
     """Assign worker role to the user"""
     url = f"{BASE_URL}/api/roles"
-    payload = {"role_type": "worker"}
+    payload = {"role_type": RoleType.WORKER.value}
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 200:
         print("Successfully obtained worker role")
@@ -34,6 +36,18 @@ def get_all_lists():
     else:
         print(f"Failed to get lists: {response.text}")
         exit(1)
+
+def get_notifications():
+    """Fetch notifications"""
+    url = f"{BASE_URL}/api/sync/notifications"
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        notifications = response.json()
+        print("Notifications:")
+        for notification in notifications:
+            print(f"- {notification}")
+    else:
+        print(f"Failed to fetch notifications: {response.text}")
 
 def edit_list(list_id):
     """Edit an existing list"""
@@ -56,6 +70,7 @@ def edit_list(list_id):
         if response.status_code == 200:
             list_data = response.json()["data"]
             print(f"Successfully updated list: {list_data['name']} (ID: {list_data['id']})")
+            print("A notification should have been automatically generated.")
         else:
             print(f"Failed to update list: {response.text}")
     finally:
@@ -70,5 +85,10 @@ if __name__ == "__main__":
     if lists:
         list_to_edit = lists[0]  # Edit the first list
         edit_list(list_to_edit['id'])
+        print("Waiting a few seconds for the notification to be processed...")
+        time.sleep(5)  # Wait for 5 seconds
+        print("Checking for notifications:")
+        get_notifications()
+
     else:
         print("No lists available to edit")

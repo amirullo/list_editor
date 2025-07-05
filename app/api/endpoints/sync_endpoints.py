@@ -12,6 +12,6 @@ def get_notifications(
     user_id: str = Depends(get_user_id)
 ):
     """
-    Get all notifications for the user
+    Get notifications for changes
     """
     return notification_service.get_notifications()

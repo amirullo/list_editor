@@ -40,9 +40,15 @@ pip install fastapi uvicorn sqlalchemy pydantic
 
 3. Run the application:
 ```
-python main.py
+docker build -t list_editor:test .
+docker run -p 8000:8000 list_editor:test
 ```
 
+4. Run script examples (interact with) :
+```
+python ./scripts/create_list.py
+python ./scripts/worker.py
+```
 
 ## API Endpoints
 

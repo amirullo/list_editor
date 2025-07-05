@@ -1,20 +1,20 @@
 from typing import List, Dict
 
 class NotificationService:
+    _notifications = []  # Class variable to store notifications across all instances
+
     def __init__(self):
-        # In a real application, this might be a database or a queue
-        self.notifications = []
-    
+        # We can keep the __init__ method for potential future instance-specific initializations
+        pass
+
     def send_notification(self, message: str) -> None:
         """
         Sends an in-app notification with the given message
         """
-        self.notifications.append(message)
-    
+        self.__class__._notifications.append(message)
+
     def get_notifications(self) -> List[str]:
         """
-        Returns all notifications and clears the queue
+        Retrieves all notifications
         """
-        notifications = self.notifications.copy()
-        self.notifications = []
-        return notifications
+        return self.__class__._notifications

@@ -1,76 +1,60 @@
 from typing import List as TypeList, Dict, Any
 from sqlalchemy.orm import Session
-from ..repositories.list_repository import ItemRepository
-from ..repositories.lock_repository import LockRepository
-from ..models.list_model import Item
-from ..schemas.list_schema import ItemCreate, ItemUpdate
-from ..core.exceptions import ListNotFoundException, LockException
+from app.repositories.item_repository import ItemRepository
+from app.schemas.item_schema import ItemCreate, ItemUpdate
+from app.models.list_model import Item
+from app.core.exceptions import NotFoundException
 from .notification_service import NotificationService
+from sqlalchemy.exc import SQLAlchemyError
+from app.utils.logger import logger
 
 class ItemService:
     def __init__(self, db: Session):
         self.db = db
         self.item_repo = ItemRepository(db)
-        self.lock_repo = LockRepository(db)
         self.notification_service = NotificationService()
     
-    def get_item(self, item_id: str) -> Item:
-        item = self.item_repo.get(item_id)
+    def get_item(self, list_id: str, item_id: str) -> Item:
+        item = self.item_repo.get_by_id(list_id, item_id)
         if not item:
-            raise ListNotFoundException("Item not found")
+            raise NotFoundException(f"Item with id {item_id} not found in list {list_id}")
         return item
     
     def get_items_by_list(self, list_id: str) -> TypeList[Item]:
-        return self.item_repo.get_items_by_list(list_id)
+        return self.item_repo.get_all_by_list(list_id)
     
-    def create_item(self, list_id: str, user_id: str, item_create: ItemCreate) -> Item:
-        # Check if list is locked by someone else
-        lock = self.lock_repo.get_lock_by_list_id(list_id)
-        if lock and lock.holder_id != user_id:
-            raise LockException()
-        
-        # Create item data
-        item_data = item_create.dict()
-        item_data["list_id"] = list_id
-        
-        # Create item
-        item = self.item_repo.create(item_data)
-        
-        # Send notification
-        self.notification_service.send_notification(f"Item '{item.name}' added to list")
-        
-        return item
+    def create_item(self, list_id: str, item_create: ItemCreate) -> Item:
+        try:
+            # Create item
+            item = self.item_repo.create(list_id, item_create.dict())
+            
+            # Send notification
+            self.notification_service.send_notification(f"Item '{item.name}' added to list")
+            
+            logger.info(f"Item '{item.name}' created successfully in list {list_id}")
+            return item
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while creating item: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error while creating item: {str(e)}")
+            raise
     
-    def update_item(self, item_id: str, user_id: str, item_update: ItemUpdate) -> Item:
-        # Get item
-        item = self.get_item(item_id)
-        
-        # Check if list is locked by someone else
-        lock = self.lock_repo.get_lock_by_list_id(item.list_id)
-        if lock and lock.holder_id != user_id:
-            raise LockException()
-        
-        # Update item
-        updated_item = self.item_repo.update(item, item_update.dict(exclude_unset=True))
+    def update_item(self, list_id: str, item_id: str, item_update: ItemUpdate) -> Item:
+        updated_item = self.item_repo.update(list_id, item_id, item_update.dict(exclude_unset=True))
+        if not updated_item:
+            raise NotFoundException(f"Item with id {item_id} not found in list {list_id}")
         
         # Send notification
         self.notification_service.send_notification(f"Item '{updated_item.name}' updated successfully")
         
         return updated_item
     
-    def delete_item(self, item_id: str, user_id: str) -> Dict[str, Any]:
-        # Get item
-        item = self.get_item(item_id)
-        
-        # Check if list is locked by someone else
-        lock = self.lock_repo.get_lock_by_list_id(item.list_id)
-        if lock and lock.holder_id != user_id:
-            raise LockException()
-        
-        # Delete item
-        deleted_item = self.item_repo.delete(item_id)
+    def delete_item(self, list_id: str, item_id: str) -> Dict[str, Any]:
+        if not self.item_repo.delete(list_id, item_id):
+            raise NotFoundException(f"Item with id {item_id} not found in list {list_id}")
         
         # Send notification
-        self.notification_service.send_notification(f"Item '{deleted_item.name}' deleted from list")
+        self.notification_service.send_notification(f"Item '{item_id}' deleted from list")
         
         return {"status": "success", "message": "Item deleted successfully"}

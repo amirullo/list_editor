@@ -1,6 +1,7 @@
 import requests
 import json
 import uuid
+from app.models.role_model import RoleType
 
 # Base URL of your FastAPI application
 BASE_URL = "http://localhost:8000"  # Adjust this if your server is running on a different port or host
@@ -17,7 +18,7 @@ headers = {
 def get_client_role():
     """Assign client role to the user"""
     url = f"{BASE_URL}/api/roles"
-    payload = {"role_type": "client"}
+    payload = {"role_type": RoleType.CLIENT.value}
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 200:
         print("Successfully obtained client role")

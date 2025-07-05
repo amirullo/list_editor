@@ -18,7 +18,7 @@ class ItemUpdate(ItemBase):
     quantity: Optional[int] = Field(ge=0, default=None)
 
 class ItemInDB(ItemBase):
-    id: str
+    item_id: int
     list_id: str
     created_at: datetime
     updated_at: datetime
