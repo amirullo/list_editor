@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_user_id, ensure_client_role, ensure_worker_role
 )
 from app.core.exceptions import NotFoundException, LockException
+from app.utils.logger import logger
 
 router = APIRouter()
 
@@ -137,14 +138,17 @@ def update_item(
     list_id: int,
     item_id: int,
     item_update: ItemUpdate,
+    # list_update: ListUpdate,
     item_service: ItemService = Depends(get_item_service),
     user_id: str = Depends(ensure_worker_role)
 ):
     """
     Update an item in a specific list (requires worker role)
     """
+    logger.info(f"Updating item {item_id} in list {list_id}")
+    print('asd')
     try:
-        updated_item = item_service.update_item(list_id, item_id, item_update, user_id, list_update)
+        updated_item = item_service.update_item(list_id, item_id, item_update, user_id)
         return Response(
             status="success",
             message="Item updated successfully",

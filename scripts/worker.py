@@ -43,7 +43,7 @@ def get_all_lists():
         print(f"Failed to get lists: {response.text}")
         exit(1)
 
-def get_specific_list(list_id):
+def get_list(list_id):
     url = f"{BASE_URL}/api/lists/{list_id}"
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
@@ -92,9 +92,9 @@ def add_item(list_id, item_name, quantity, price):
         print(f"Failed to add item: {response.text}")
         exit(1)
 
-def update_item(item_id, item_update):
+def update_item(list_id: int, item_id: int, item_update: dict):
     url = f"{BASE_URL}/api/lists/{list_id}/items/{item_id}"
-    response = requests.put(url, headers=headers, json=item_update.dict())
+    response = requests.put(url, headers=headers, json=item_update)
     if response.status_code == 200:
         print("Successfully updated item")
     else:
@@ -120,15 +120,19 @@ if __name__ == "__main__":
 
     if lists:
         list_to_edit = lists[0]  # Edit the first list
-        list_data = get_specific_list(list_to_edit['id'])
+        list_data = get_list(list_to_edit['id'])
         print(f"Successfully retrieved list info: {list_data}")
         add_item(list_to_edit['id'], "New Item", 10, 10.99)
 
-        list_data = get_specific_list(list_to_edit['id'])
+        list_data = get_list(list_to_edit['id'])
         print(f"Updated info in list: {list_data}")
 
-        # update_item(list_to_edit['id'], {"name": "Updated Item"})
-        # print(f"Successfully updated item: {item_to_update['name']}")
+        update_item(list_id=list_data['id'],
+                    item_id=list_data["items"][0]['item_id'],
+                    item_update={"name": "Updated Item1", "quantity": 20})
+
+        list_data = get_list(list_data['id'])
+        print(f"Updated info in list: {list_data}")
 
         delete_list(list_to_edit['id'])
     else:

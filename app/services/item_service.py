@@ -1,22 +1,27 @@
 from typing import List as TypeList, Dict, Any
 from sqlalchemy.orm import Session
 from app.repositories.item_repository import ItemRepository
+from app.repositories.lock_repository import LockRepository
 from app.schemas.item_schema import ItemCreate, ItemUpdate, ItemInDB
 from app.schemas.list_schema import ListCreate, ListUpdate
 from app.models.item_model import Item
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundException, LockException
 from .notification_service import NotificationService
 from sqlalchemy.exc import SQLAlchemyError
 from app.utils.logger import logger
+
 
 class ItemService:
     def __init__(self, db: Session):
         self.db = db
         self.item_repo = ItemRepository(db)
+        self.lock_repo = LockRepository(db)
         self.notification_service = NotificationService()
     
     def get_item(self, list_id: int, item_id: int) -> Item:
-        item = self.item_repo.get(list_id, item_id)
+        logger.info(f"trying to get item")
+        item = self.item_repo.get_by_id(list_id, item_id)
+        logger.info(f"Item '{item}' retrieved successfully from list")
         if not item:
             raise NotFoundException(f"Item with id {item_id} not found in list {list_id}")
         return item
@@ -27,22 +32,13 @@ class ItemService:
     def create_item(self, list_id: int, item_create: ItemCreate) -> ItemInDB:
         try:
             # Create item
-            item = self.item_repo.create(list_id, item_create.model_dump())
+            item = self.item_repo.create(list_id, item_create.model_dump(exclude_unset=True))
             
             # Send notification
             self.notification_service.send_notification(f"Item '{item.name}' added to list")
             
             logger.info(f"Item '{item.name}' created successfully in list {list_id}")
-            return ItemInDB(
-                item_id=item.item_id,
-                list_id=item.list_id,
-                name=item.name,
-                category=item.category,
-                quantity=item.quantity,
-                price=item.price,
-                created_at=item.created_at,
-                updated_at=item.updated_at
-            )
+            return ItemInDB.model_validate(item)
         except SQLAlchemyError as e:
             logger.error(f"Database error while creating item: {str(e)}")
             raise
@@ -50,12 +46,12 @@ class ItemService:
             logger.error(f"Unexpected error while creating item: {str(e)}")
             raise
     
-    def update_item(self, list_id: int, item_id: int, item_update: ItemUpdate, user_id: str, list_update: ListUpdate) -> Item:
-        updated_item = self.item_repo.update(list_id, item_id, item_update.dict(exclude_unset=True))
+    def update_item(self, list_id: int, item_id: int, item_update: ItemUpdate, user_id: str) -> Item:
 
         # Check if list exists
         # list_obj = self.get_list(list_id)
         item_obj = self.get_item(list_id, item_id)
+        print(f"temp_item_info: {item_obj}")
 
         # Check if list is locked by someone else
         lock = self.lock_repo.get_lock_by_list_id(list_id)
@@ -63,11 +59,14 @@ class ItemService:
             raise LockException()
 
         # Update Item
-        updated_list = self.item_repo.update(item_obj, list_update.dict(exclude_unset=True))
+        # updated_list = self.item_repo.update(item_obj, list_update.model_dump(exclude_unset=True))
+        updated_item = self.item_repo.update(list_id, item_id, item_update.model_dump(exclude_unset=True))
 
         if not updated_item:
             raise NotFoundException(f"Item with id {item_id} not found in list {list_id}")
         
+        if lock:
+            self.lock_repo.delete(lock.id)
         # Send notification
         self.notification_service.send_notification(f"Item '{updated_item.name}' updated successfully")
         
