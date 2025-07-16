@@ -19,9 +19,7 @@ class ItemService:
         self.notification_service = NotificationService()
     
     def get_item(self, list_id: int, item_id: int) -> Item:
-        logger.info(f"trying to get item")
         item = self.item_repo.get_by_id(list_id, item_id)
-        logger.info(f"Item '{item}' retrieved successfully from list")
         if not item:
             raise NotFoundException(f"Item with id {item_id} not found in list {list_id}")
         return item
@@ -51,7 +49,6 @@ class ItemService:
         # Check if list exists
         # list_obj = self.get_list(list_id)
         item_obj = self.get_item(list_id, item_id)
-        print(f"temp_item_info: {item_obj}")
 
         # Check if list is locked by someone else
         lock = self.lock_repo.get_lock_by_list_id(list_id)

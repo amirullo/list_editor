@@ -145,8 +145,6 @@ def update_item(
     """
     Update an item in a specific list (requires worker role)
     """
-    logger.info(f"Updating item {item_id} in list {list_id}")
-    print('asd')
     try:
         updated_item = item_service.update_item(list_id, item_id, item_update, user_id)
         return Response(

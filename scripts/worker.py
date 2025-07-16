@@ -101,14 +101,14 @@ def update_item(list_id: int, item_id: int, item_update: dict):
         print(f"Failed to update item: {response.text}")
         exit(1)
 
-def get_items(list_id):
-    """Add an item to a list"""
-    url = f"{BASE_URL}/api/lists/{list_id}/items"
-    response = requests.get(url, headers=headers)
+def delete_item(list_id: int, item_id: int):
+    """Delete an item"""
+    url = f"{BASE_URL}/api/lists/{list_id}/items/{item_id}"
+    response = requests.delete(url, headers=headers)
     if response.status_code == 200:
-        return response.json()["data"]
+        print(f"Successfully deleted list with ID: {list_id}")
     else:
-        print(f"Failed to get items: {response.text}")
+        print(f"Failed to delete list: {response.text}")
         exit(1)
 
 if __name__ == "__main__":
@@ -123,6 +123,7 @@ if __name__ == "__main__":
         list_data = get_list(list_to_edit['id'])
         print(f"Successfully retrieved list info: {list_data}")
         add_item(list_to_edit['id'], "New Item", 10, 10.99)
+        add_item(list_to_edit['id'], "New Item3", 100, 40)
 
         list_data = get_list(list_to_edit['id'])
         print(f"Updated info in list: {list_data}")
@@ -132,7 +133,12 @@ if __name__ == "__main__":
                     item_update={"name": "Updated Item1", "quantity": 20})
 
         list_data = get_list(list_data['id'])
-        print(f"Updated info in list: {list_data}")
+        print(f"Updated info in item: {list_data}")
+
+        delete_item(list_id=list_data['id'], item_id=list_data["items"][0]['item_id'])
+
+        list_data = get_list(list_data['id'])
+        print(f"Deleted item: {list_data}")
 
         delete_list(list_to_edit['id'])
     else:
