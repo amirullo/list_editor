@@ -1,6 +1,7 @@
 from typing import List as TypeList, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.models.list_model import List, Item
+from app.models.list_model import List
+from app.models.item_model import Item
 from .base_repository import BaseRepository
 
 class ListRepository(BaseRepository[List]):
@@ -21,9 +22,9 @@ class ListRepository(BaseRepository[List]):
         self.db.refresh(db_list)
         return db_list
 
-class ItemRepository(BaseRepository[Item]):
-    def __init__(self, db: Session):
-        super().__init__(Item, db)
-    
-    def get_items_by_list(self, list_id: str) -> TypeList[Item]:
-        return self.db.query(Item).filter(Item.list_id == list_id).all()
+# class ItemRepository(BaseRepository[Item]):
+#     def __init__(self, db: Session):
+#         super().__init__(Item, db)
+#
+#     def get_items_by_list(self, list_id: int) -> TypeList[Item]:
+#         return self.db.query(Item).filter(Item.list_id == list_id).all()

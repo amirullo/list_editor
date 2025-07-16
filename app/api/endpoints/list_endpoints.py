@@ -1,10 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List as TypeList, Dict, Any, List
-
-from app.schemas.list_schema import (
-    ListCreate, ListUpdate, ListInDB,
-    ItemCreate, ItemUpdate, ItemInDB
-)
+from app.schemas.list_schema import ListCreate, ListUpdate, ListInDB
+from app.schemas.item_schema import ItemCreate, ItemUpdate, ItemInDB
 from app.schemas.response_schema import Response, StatusMessage
 from app.services.list_service import ListService
 from app.services.item_service import ItemService
@@ -52,7 +49,7 @@ def get_all_lists(
 
 @router.get("/{list_id}", response_model=Response[ListInDB])
 def get_list(
-    list_id: str,
+    list_id: int,
     list_service: ListService = Depends(get_list_service),
     user_id: str = Depends(get_user_id)
 ):
@@ -71,7 +68,7 @@ def get_list(
 
 @router.put("/{list_id}", response_model=Response[ListInDB])
 def update_list(
-    list_id: str,
+    list_id: int,
     list_update: ListUpdate,
     list_service: ListService = Depends(get_list_service),
     user_id: str = Depends(ensure_worker_role)
@@ -93,7 +90,7 @@ def update_list(
 
 @router.delete("/{list_id}", response_model=Response[StatusMessage])
 def delete_list(
-    list_id: str,
+    list_id: int,
     list_service: ListService = Depends(get_list_service),
     user_id: str = Depends(ensure_worker_role)
 ):
@@ -115,7 +112,7 @@ def delete_list(
 # Item endpoints
 @router.post("/{list_id}/items", response_model=Response[ItemInDB])
 def create_item(
-    list_id: str,
+    list_id: int,
     item_create: ItemCreate,
     item_service: ItemService = Depends(get_item_service),
     user_id: str = Depends(ensure_worker_role)
@@ -135,29 +132,10 @@ def create_item(
     except LockException as e:
         raise HTTPException(status_code=409, detail=str(e))
 
-@router.get("/{list_id}/items", response_model=Response[List[ItemInDB]])
-def get_items(
-    list_id: str,
-    item_service: ItemService = Depends(get_item_service),
-    user_id: str = Depends(get_user_id)
-):
-    """
-    Get all items in a specific list
-    """
-    try:
-        items = item_service.get_all_items(list_id)
-        return Response(
-            status="success",
-            message="Items retrieved successfully",
-            data=items
-        )
-    except NotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
 @router.put("/{list_id}/items/{item_id}", response_model=Response[ItemInDB])
 def update_item(
-    list_id: str,
-    item_id: str,
+    list_id: int,
+    item_id: int,
     item_update: ItemUpdate,
     item_service: ItemService = Depends(get_item_service),
     user_id: str = Depends(ensure_worker_role)
@@ -166,7 +144,7 @@ def update_item(
     Update an item in a specific list (requires worker role)
     """
     try:
-        updated_item = item_service.update_item(list_id, item_id, item_update)
+        updated_item = item_service.update_item(list_id, item_id, item_update, user_id, list_update)
         return Response(
             status="success",
             message="Item updated successfully",
@@ -179,8 +157,8 @@ def update_item(
 
 @router.delete("/{list_id}/items/{item_id}", response_model=Response[Dict])
 def delete_item(
-    list_id: str,
-    item_id: str,
+    list_id: int,
+    item_id: int,
     item_service: ItemService = Depends(get_item_service),
     user_id: str = Depends(ensure_worker_role)
 ):
@@ -202,7 +180,7 @@ def delete_item(
 # Lock endpoints
 @router.post("/{list_id}/lock", response_model=Response[StatusMessage])
 def acquire_lock(
-    list_id: str,
+    list_id: int,
     lock_service: LockService = Depends(get_lock_service),
     user_id: str = Depends(ensure_worker_role)
 ):
@@ -221,7 +199,7 @@ def acquire_lock(
 
 @router.delete("/{list_id}/lock", response_model=Response[StatusMessage])
 def release_lock(
-    list_id: str,
+    list_id: int,
     lock_service: LockService = Depends(get_lock_service),
     user_id: str = Depends(ensure_worker_role)
 ):

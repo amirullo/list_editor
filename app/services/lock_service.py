@@ -11,7 +11,7 @@ class LockService:
         self.lock_repo = LockRepository(db)
         self.notification_service = NotificationService()
     
-    def acquire_lock(self, list_id: str, user_id: str) -> Lock:
+    def acquire_lock(self, list_id: int, user_id: str) -> Lock:
         # Try to acquire the lock
         lock = self.lock_repo.acquire_lock(list_id, user_id)
         if not lock:
@@ -28,7 +28,7 @@ class LockService:
         
         return lock
     
-    def release_lock(self, list_id: str, user_id: str) -> Dict[str, Any]:
+    def release_lock(self, list_id: int, user_id: str) -> Dict[str, Any]:
         # Try to release the lock
         success = self.lock_repo.release_lock(list_id, user_id)
         if not success:
@@ -39,7 +39,7 @@ class LockService:
         
         return {"status": "success", "message": "Lock released successfully"}
     
-    def check_lock(self, list_id: str, user_id: str) -> bool:
+    def check_lock(self, list_id: int, user_id: str) -> bool:
         lock = self.lock_repo.get_lock_by_list_id(list_id)
         if not lock:
             return True  # Not locked, free to edit
