@@ -10,10 +10,10 @@ class LockRepository(BaseRepository[Lock]):
     def __init__(self, db: Session):
         super().__init__(Lock, db)
     
-    def get_lock_by_list_id(self, list_id: str) -> Optional[Lock]:
+    def get_lock_by_list_id(self, list_id: int) -> Optional[Lock]:
         return self.db.query(Lock).filter(Lock.list_id == list_id).first()
     
-    def acquire_lock(self, list_id: str, holder_id: str) -> Optional[Lock]:
+    def acquire_lock(self, list_id: int, holder_id: str) -> Optional[Lock]:
         # First check if the list is already locked
         existing_lock = self.get_lock_by_list_id(list_id)
         if existing_lock:
@@ -28,7 +28,7 @@ class LockRepository(BaseRepository[Lock]):
         }
         return self.create(lock_data)
     
-    def release_lock(self, list_id: str, holder_id: str) -> bool:
+    def release_lock(self, list_id: int, holder_id: str) -> bool:
         lock = self.get_lock_by_list_id(list_id)
         if lock and lock.holder_id == holder_id:
             self.db.delete(lock)

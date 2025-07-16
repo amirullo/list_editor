@@ -86,18 +86,29 @@ def add_item(list_id, item_name, quantity, price):
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 200:
         item_data = response.json()["data"]
-        print(f"Successfully added item: {item_data['name']} (ID: {item_data['item_id']})")
+        print(item_data)
+        # print(f"Successfully added item: {item_data['name']} (ID: {item_data['item_id']})")
     else:
         print(f"Failed to add item: {response.text}")
         exit(1)
 
 def update_item(item_id, item_update):
-    url = f"{BASE_URL}/api/items/{item_id}"
+    url = f"{BASE_URL}/api/lists/{list_id}/items/{item_id}"
     response = requests.put(url, headers=headers, json=item_update.dict())
     if response.status_code == 200:
         print("Successfully updated item")
     else:
         print(f"Failed to update item: {response.text}")
+        exit(1)
+
+def get_items(list_id):
+    """Add an item to a list"""
+    url = f"{BASE_URL}/api/lists/{list_id}/items"
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()["data"]
+    else:
+        print(f"Failed to get items: {response.text}")
         exit(1)
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from ..repositories.role_repository import RoleRepository
-from ..models.role_model import Role, RoleType
-from ..core.exceptions import PermissionException
+from app.repositories.role_repository import RoleRepository
+from app.models.role_model import Role, RoleType
+from app.core.exceptions import PermissionException
 
 class RoleService:
     def __init__(self, db: Session):

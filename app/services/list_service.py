@@ -1,9 +1,12 @@
 from typing import List as TypeList, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.repositories.list_repository import ListRepository, ItemRepository
+from app.repositories.list_repository import ListRepository
+from app.repositories.item_repository import ItemRepository
 from app.repositories.lock_repository import LockRepository
-from app.models.list_model import List, Item
-from app.schemas.list_schema import ListCreate, ListUpdate, ItemCreate
+from app.models.list_model import List
+from app.models.item_model import Item
+from app.schemas.list_schema import ListCreate, ListUpdate
+from app.schemas.item_schema import ItemCreate
 from app.core.exceptions import NotFoundException, LockException
 from .notification_service import NotificationService
 
@@ -15,7 +18,7 @@ class ListService:
         self.lock_repo = LockRepository(db)
         self.notification_service = NotificationService()
     
-    def get_list(self, list_id: str) -> List:
+    def get_list(self, list_id: int) -> List:
         list_obj = self.list_repo.get(list_id)
         if not list_obj:
             raise NotFoundException(f"List with id {list_id} not found")
@@ -41,7 +44,7 @@ class ListService:
         
         return list_obj
     
-    def update_list(self, list_id: str, user_id: str, list_update: ListUpdate) -> List:
+    def update_list(self, list_id: int, user_id: str, list_update: ListUpdate) -> List:
         # Check if list exists
         list_obj = self.get_list(list_id)
         
@@ -58,7 +61,7 @@ class ListService:
         
         return updated_list
     
-    def delete_list(self, list_id: str, user_id: str) -> Dict[str, Any]:
+    def delete_list(self, list_id: int, user_id: str) -> Dict[str, Any]:
         # Check if list exists
         list_obj = self.get_list(list_id)
         

@@ -1,30 +1,9 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 import uuid
+from app.schemas.item_schema import ItemInDB
 
-# Item schemas
-class ItemBase(BaseModel):
-    name: str
-    category: Optional[str] = None
-    quantity: int = Field(ge=0)
-    price: Optional[float] = Field(ge=0)
-
-class ItemCreate(ItemBase):
-    pass
-
-class ItemUpdate(ItemBase):
-    name: Optional[str] = None
-    quantity: Optional[int] = Field(ge=0, default=None)
-
-class ItemInDB(ItemBase):
-    item_id: int
-    list_id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        orm_mode = True
 
 # List schemas
 class ListBase(BaseModel):
@@ -37,10 +16,9 @@ class ListUpdate(BaseModel):
     name: Optional[str] = None
 
 class ListInDB(ListBase):
-    id: str
+    id: int
     created_at: datetime
     updated_at: datetime
     items: List[ItemInDB] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
