@@ -56,6 +56,8 @@ class ListService:
         # Update list
         updated_list = self.list_repo.update(list_obj, list_update.dict(exclude_unset=True))
         
+        if lock:
+            self.lock_repo.delete(lock.id)
         # Send notification
         self.notification_service.send_notification(f"List '{updated_list.name}' updated successfully")
         

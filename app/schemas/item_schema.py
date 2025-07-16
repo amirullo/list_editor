@@ -6,18 +6,24 @@ class ItemBase(BaseModel):
     name: str
 
 class ItemCreate(ItemBase):
-    pass
+    category: Optional[str] = None
+    quantity: Optional[int] = None
+    price: Optional[float] = None
 
 class ItemUpdate(ItemBase):
     name: Optional[str] = None
     category: Optional[str] = None
-    quantity: Optional[int] = Field(ge=0)
-    price: Optional[float] = Field(ge=0)
+    quantity: Optional[int] = None
+    price: Optional[float] = None
 
 class ItemInDB(ItemBase):
     item_id: int
     list_id: int
+    name: str
     created_at: datetime
     updated_at: datetime
+    category: Optional[str] = None
+    quantity: Optional[int] = None
+    price: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
