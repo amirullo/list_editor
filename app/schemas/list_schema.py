@@ -1,24 +1,33 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import List as TypeList, Optional
+from pydantic import BaseModel, Field
 from datetime import datetime
-import uuid
-from app.schemas.item_schema import ItemInDB
+from .item_schema import ItemInDB
 
-
-# List schemas
 class ListBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
 
 class ListCreate(ListBase):
-    pass
+    user_id_list: Optional[TypeList[str]] = Field(default_factory=list)
 
 class ListUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    user_id_list: Optional[TypeList[str]] = None
 
 class ListInDB(ListBase):
     id: int
+    creator_id: str
+    user_id_list: TypeList[str]
     created_at: datetime
     updated_at: datetime
-    items: List[ItemInDB] = []
+    items: TypeList[ItemInDB] = []
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+
+class ListAddUser(BaseModel):
+    user_id: str = Field(..., min_length=1)
+
+class ListRemoveUser(BaseModel):
+    user_id: str = Field(..., min_length=1)

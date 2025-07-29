@@ -1,15 +1,26 @@
-from fastapi import HTTPException, status
+class BaseAPIException(Exception):
+    """Base exception for API errors"""
+    def __init__(self, message: str, status_code: int = 500):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
 
-class NotFoundException(HTTPException):
-    def __init__(self, detail: str):
-        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+class NotFoundException(BaseAPIException):
+    """Exception raised when a resource is not found"""
+    def __init__(self, message: str = "Resource not found"):
+        super().__init__(message, 404)
 
-class LockException(HTTPException):
-    def __init__(self, detail: str = "The resource is locked"):
-        super().__init__(status_code=status.HTTP_423_LOCKED, detail=detail)
+class ForbiddenException(BaseAPIException):
+    """Exception raised when access is forbidden"""
+    def __init__(self, message: str = "Access forbidden"):
+        super().__init__(message, 403)
 
-class PermissionException(HTTPException):
-    def __init__(self, detail: str):
-        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+class LockException(BaseAPIException):
+    """Exception raised when lock operations fail"""
+    def __init__(self, message: str = "Lock operation failed"):
+        super().__init__(message, 409)
 
-# Add any other custom exceptions here
+class PermissionException(BaseAPIException):
+    """Exception raised when user lacks required permissions"""
+    def __init__(self, message: str = "Insufficient permissions"):
+        super().__init__(message, 403)

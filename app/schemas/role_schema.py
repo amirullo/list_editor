@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from app.models.role_model import RoleType
 
 class RoleBase(BaseModel):
@@ -8,6 +8,8 @@ class RoleCreate(RoleBase):
     pass
 
 class RoleInDB(RoleBase):
-    id: str
-
-    model_config = ConfigDict(from_attributes=True)
+    id: int
+    user_id: str
+    
+    class Config:
+        from_attributes = True

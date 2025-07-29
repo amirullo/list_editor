@@ -17,7 +17,7 @@ class ItemUpdate(ItemBase):
     price: Optional[float] = None
 
 class ItemInDB(ItemBase):
-    item_id: int
+    id: int
     list_id: int
     name: str
     created_at: datetime

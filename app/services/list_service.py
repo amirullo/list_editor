@@ -5,81 +5,121 @@ from app.repositories.item_repository import ItemRepository
 from app.repositories.lock_repository import LockRepository
 from app.models.list_model import List
 from app.models.item_model import Item
-from app.schemas.list_schema import ListCreate, ListUpdate
+from app.schemas.list_schema import ListCreate, ListUpdate, ListInDB
 from app.schemas.item_schema import ItemCreate
-from app.core.exceptions import NotFoundException, LockException
-from .notification_service import NotificationService
+from app.core.exceptions import NotFoundException, LockException, ForbiddenException
+from app.services.notification_service import NotificationService
 
 class ListService:
-    def __init__(self, db: Session):
-        self.db = db
-        self.list_repo = ListRepository(db)
-        self.item_repo = ItemRepository(db)
-        self.lock_repo = LockRepository(db)
-        self.notification_service = NotificationService()
-    
-    def get_list(self, list_id: int) -> List:
-        list_obj = self.list_repo.get(list_id)
-        if not list_obj:
-            raise NotFoundException(f"List with id {list_id} not found")
-        return list_obj
-    
-    def get_all_lists(self) -> TypeList[List]:
-        return self.list_repo.get_all()
-    
-    def create_list(self, list_create: ListCreate, items: TypeList[ItemCreate] = None) -> List:
-        # Create list data
-        list_data = list_create.dict()
+    def __init__(self, list_repository: ListRepository):
+        self.list_repository = list_repository
+
+    def create_list(self, list_create: ListCreate, creator_id: str, items: TypeList[ItemCreate] = None) -> ListInDB:
+        """Create a new list with creator_id"""
+        list_data = list_create.model_dump()
+        items_data = [item.model_dump() for item in items] if items else None
         
-        # Create items data if provided
-        items_data = []
-        if items:
-            items_data = [item.dict() for item in items]
+        db_list = self.list_repository.create_with_items(list_data, creator_id, items_data)
         
-        # Create list with items
-        list_obj = self.list_repo.create_with_items(list_data, items_data)
+        # Notify all participants about list creation
+        self._notify_list_participants(db_list, f"List '{db_list.name}' was created", creator_id)
         
-        # Send notification
-        self.notification_service.send_notification(f"List '{list_obj.name}' created successfully")
+        return ListInDB.model_validate(db_list)
+
+    def get_all_lists(self, user_id: str) -> TypeList[ListInDB]:
+        """Get all lists accessible to user"""
+        db_lists = self.list_repository.get_user_lists(user_id)
+        return [ListInDB.model_validate(db_list) for db_list in db_lists]
+
+    def get_list(self, list_id: int, user_id: str) -> ListInDB:
+        """Get list if user has access"""
+        db_list = self.list_repository.get_list_by_id_and_user(list_id, user_id)
+        if not db_list:
+            raise NotFoundException(f"List with id {list_id} not found or access denied")
+        return ListInDB.model_validate(db_list)
+
+    def update_list(self, list_id: int, list_update: ListUpdate, user_id: str) -> ListInDB:
+        """Update list - only accessible users can update"""
+        # Check if user has access to the list
+        db_list = self.list_repository.get_list_by_id_and_user(list_id, user_id)
+        if not db_list:
+            raise NotFoundException(f"List with id {list_id} not found or access denied")
         
-        return list_obj
-    
-    def update_list(self, list_id: int, user_id: str, list_update: ListUpdate) -> List:
-        # Check if list exists
-        list_obj = self.get_list(list_id)
+        update_data = {k: v for k, v in list_update.model_dump().items() if v is not None}
+        updated_list = self.list_repository.update(list_id, update_data)
         
-        # Check if list is locked by someone else
-        lock = self.lock_repo.get_lock_by_list_id(list_id)
-        if lock and lock.holder_id != user_id:
-            raise LockException()
+        # Notify all participants about list update
+        self._notify_list_participants(updated_list, f"List '{updated_list.name}' was updated", user_id)
         
-        # Update list
-        updated_list = self.list_repo.update(list_obj, list_update.dict(exclude_unset=True))
+        return ListInDB.model_validate(updated_list)
+
+    def delete_list(self, list_id: int, user_id: str) -> Dict[str, str]:
+        """Delete list - only creator can delete"""
+        # Check if user is the creator
+        db_list = self.list_repository.get_list_by_id_and_creator(list_id, user_id)
+        if not db_list:
+            raise ForbiddenException("Only the creator can delete this list")
         
-        if lock:
-            self.lock_repo.delete(lock.id)
-        # Send notification
-        self.notification_service.send_notification(f"List '{updated_list.name}' updated successfully")
+        list_name = db_list.name
         
-        return updated_list
-    
-    def delete_list(self, list_id: int, user_id: str) -> Dict[str, Any]:
-        # Check if list exists
-        list_obj = self.get_list(list_id)
+        # Notify all participants before deletion
+        self._notify_list_participants(db_list, f"List '{list_name}' was deleted", user_id)
         
-        # Check if list is locked by someone else
-        lock = self.lock_repo.get_lock_by_list_id(list_id)
-        if lock and lock.holder_id != user_id:
-            raise LockException()
+        self.list_repository.delete(list_id)
+        return {"message": f"List '{list_name}' deleted successfully"}
+
+    def add_user_to_list(self, list_id: int, user_id_to_add: str, requester_id: str) -> ListInDB:
+        """Add user to list - only creator can add users"""
+        # Check if requester is the creator
+        db_list = self.list_repository.get_list_by_id_and_creator(list_id, requester_id)
+        if not db_list:
+            raise ForbiddenException("Only the creator can add users to this list")
         
-        # Delete list
-        deleted_list = self.list_repo.delete(list_id)
+        # Don't add creator to user_id_list
+        if user_id_to_add == db_list.creator_id:
+            raise ValueError("Creator is already part of the list")
         
-        # Release any locks on this list
-        if lock:
-            self.lock_repo.delete(lock.id)
+        updated_list = self.list_repository.add_user_to_list(list_id, user_id_to_add)
         
-        # Send notification
-        self.notification_service.send_notification(f"List '{deleted_list.name}' deleted successfully")
+        # Notify all participants about new user
+        self._notify_list_participants(updated_list, f"User {user_id_to_add} was added to list '{updated_list.name}'", requester_id)
         
-        return {"status": "success", "message": "List deleted successfully"}
+        return ListInDB.model_validate(updated_list)
+
+    def remove_user_from_list(self, list_id: int, user_id_to_remove: str, requester_id: str) -> ListInDB:
+        """Remove user from list - only creator can remove users"""
+        # Check if requester is the creator
+        db_list = self.list_repository.get_list_by_id_and_creator(list_id, requester_id)
+        if not db_list:
+            raise ForbiddenException("Only the creator can remove users from this list")
+        
+        # Can't remove creator
+        if user_id_to_remove == db_list.creator_id:
+            raise ValueError("Cannot remove creator from the list")
+        
+        updated_list = self.list_repository.remove_user_from_list(list_id, user_id_to_remove)
+        
+        # Notify all participants about user removal
+        self._notify_list_participants(updated_list, f"User {user_id_to_remove} was removed from list '{updated_list.name}'", requester_id)
+        
+        return ListInDB.model_validate(updated_list)
+
+    def _notify_list_participants(self, db_list, message: str, actor_id: str):
+        """Notify all list participants about changes"""
+        # Get all participants (creator + users in user_id_list)
+        participants = [db_list.creator_id]
+        if db_list.user_id_list:
+            participants.extend(db_list.user_id_list)
+        
+        # Remove duplicates and the actor
+        participants = list(set(participants))
+        if actor_id in participants:
+            participants.remove(actor_id)
+        
+        # Send notifications
+        for participant_id in participants:
+            self.notification_service.create_notification(
+                user_id=participant_id,
+                message=message,
+                list_id=db_list.id
+            )

@@ -1,25 +1,26 @@
-import uuid
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Table
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from .base import BaseModel
+from datetime import datetime
 
-class List(BaseModel):
+Base = declarative_base()
+
+# Association table for many-to-many relationship between lists and users
+list_users = Table(
+    'list_users',
+    Base.metadata,
+    Column('list_id', Integer, ForeignKey('lists.id'), primary_key=True),
+    Column('user_id', String, ForeignKey('users.id'), primary_key=True)
+)
+
+class List(Base):
     __tablename__ = "lists"
     
     id = Column(Integer, autoincrement=True, primary_key=True)
-    name = Column(String(255), nullable=False)
-    description = Column(String(1000))
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    creator_id = Column(String, nullable=False)
     
+    # Relationships
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
-    
-# class Item(BaseModel):
-#     __tablename__ = "items"
-#
-#     item_id = Column(Integer, autoincrement=True, primary_key=True)
-#     list_id = Column(Integer, ForeignKey("lists.id"), nullable=False)
-#     name = Column(String(255), nullable=False)
-#     category = Column(String(255), nullable=True)
-#     quantity = Column(Integer, nullable=False, default=1)
-#     price = Column(Float, nullable=True)
-#
-#     list = relationship("List", back_populates="items")
+    users = relationship("User", secondary=list_users, back_populates="lists")

@@ -1,13 +1,16 @@
 from typing import Optional, Any, Generic, TypeVar
 from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
 
 T = TypeVar('T')
 
 class StatusMessage(BaseModel):
     message: str
-
-class Response(GenericModel, Generic[T]):
     status: str = "success"
-    message: str = "Operation successful"
+
+class ResponseModel(BaseModel, Generic[T]):
     data: Optional[T] = None
+    message: str = "Success"
+    status: str = "success"
+    
+    class Config:
+        arbitrary_types_allowed = True

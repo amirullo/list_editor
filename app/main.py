@@ -9,6 +9,13 @@ from app.utils.logger import logger
 from app.core.db import engine, get_db
 from app.models.base import Base
 
+# Import all models explicitly to ensure they're registered
+from app.models.list_model import List
+from app.models.item_model import Item
+from app.models.role_model import Role
+from app.models.lock_model import Lock
+# Import any other models you have
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
