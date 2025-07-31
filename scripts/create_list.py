@@ -2,6 +2,7 @@ import requests
 import json
 import uuid
 from app.models.role_model import RoleType
+from app.repositories.list_user_repository import ListUserRepository
 
 # Base URL of your FastAPI application
 BASE_URL = "http://localhost:8000"  # Adjust this if your server is running on a different port or host
@@ -26,8 +27,8 @@ def get_client_role():
         print(f"Failed to obtain client role: {response.text}")
         exit(1)
 
-def create_list():
-    """Create a new list"""
+def create_list_with_creator():
+    """Create a new list and assign creator role"""
     url = f"{BASE_URL}/api/lists"
     payload = {
         "list_create": {  # Wrap the payload in 'list_create'
@@ -39,9 +40,17 @@ def create_list():
     if response.status_code == 200:
         list_data = response.json()["data"]
         print(f"Successfully created list: {list_data['name']} (ID: {list_data['id']})")
+        
+        # Add creator role
+        list_user_repo = ListUserRepository(db)
+        list_user_repo.create(
+            user_id=user_id,  # from headers
+            list_id=list_data['id'],
+            role_type=RoleType.CREATOR
+        )
     else:
         print(f"Failed to create list: {response.text}")
 
 if __name__ == "__main__":
     get_client_role()
-    create_list()
+    create_list_with_creator()

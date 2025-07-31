@@ -1,94 +1,103 @@
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-from app.models.role_model import RoleType
 import uuid
-from unittest.mock import patch, MagicMock
-from fastapi import HTTPException
+import requests
 import asyncio
 
-client = TestClient(app)
-user_id = str(uuid.uuid4())
-headers = {
-    "Content-Type": "application/json",
-    "X-User-ID": user_id
-}
 
-def test_create_role_success():
-    payload = {"role_type": RoleType.WORKER.value}
-    response = client.post("/api/roles", headers=headers, json=payload)
+BASE_URL = "http://localhost:8000"
+
+def generate_userid():
+    user_id = str(uuid.uuid4())
+    return user_id
+
+def create_global_role(test_user_id):
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": test_user_id
+    }
+    payload = {
+        "user_id": test_user_id,
+        "role_type": "client"
+    }
+    response = requests.post(f"{BASE_URL}/api/roles/global", headers=headers, json=payload)
+    return response
+
+
+def test_get_global_role_success():
+    test_user_id = generate_userid()
+    create_response = create_global_role(test_user_id)
+
+    if create_response.status_code != 200:
+        pytest.fail(f"Expected status code 200, but got {create_response.status_code}. Error detail: {create_response.text}")
+
+    data = create_response.json()
+    assert data["status"] == "success"
+    assert data["message"] == "Global role created successfully"
+    assert data["data"]["user_id"] == test_user_id
+    assert data["data"]["role_type"] == "client"
+
+    # Now, retrieve the global role
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": test_user_id
+    }
+    response = requests.get(f"{BASE_URL}/api/roles/global/{test_user_id}", headers=headers)
     
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
-    assert data["message"] == f"Role {RoleType.WORKER.value} assigned successfully"
-    assert data["data"]["role_type"] == RoleType.WORKER.value
-    assert data["data"]["id"] == user_id
+    assert data["message"] == "Global role retrieved successfully"
+    assert data["data"]["user_id"] == test_user_id
+    assert data["data"]["role_type"] == "client"
 
-def test_create_role_includes_role_data_in_response():
-    payload = {"role_type": RoleType.CLIENT.value}
-    response = client.post("/api/roles", headers=headers, json=payload)
-    
-    assert response.status_code == 200
-    data = response.json()["data"]
-    
-    # Verify that the response includes the created role data
-    assert "id" in data
-    assert "role_type" in data
-    assert data["role_type"] == RoleType.CLIENT.value
-    assert data["id"] == user_id
 
-def test_create_role_validates_user_id_dependency():
-    """Test that user_id dependency is properly resolved before role creation"""
 
-    test_user_id = str(uuid.uuid4())
-    custom_headers = {
+@pytest.mark.asyncio
+async def make_fake_request(test_user_id):
+    headers = {
         "Content-Type": "application/json",
         "X-User-ID": test_user_id
     }
-    
-    payload = {"role_type": RoleType.WORKER.value}
-    
-    with patch('app.api.dependencies.get_user_id', return_value=test_user_id):
-        response = client.post("/api/roles", headers=custom_headers, json=payload)
-    
-    assert response.status_code == 200
-    data = response.json()["data"]
-    assert data["id"] == test_user_id
-    assert data["role_type"] == RoleType.WORKER.value
+    response = requests.get(f"{BASE_URL}/api/roles/global/{test_user_id}", headers=headers)
+    return response.status_code
 
-def test_create_role_service_dependency_injection():
-    """Test that role_service dependency is properly injected and available"""
-
-    test_user_id = str(uuid.uuid4())
-    custom_headers = {
+@pytest.mark.asyncio
+async def make_correct_request(test_user_id):
+    create_global_role(test_user_id)
+    headers = {
         "Content-Type": "application/json",
         "X-User-ID": test_user_id
     }
-    
-    # Mock the role service and its create_role method
-    mock_role_service = MagicMock()
-    mock_role = MagicMock()
-    mock_role.role_type.value = RoleType.CLIENT.value
-    mock_role_service.create_role.return_value = mock_role
-    
-    payload = {"role_type": RoleType.CLIENT.value}
-    
-    with patch('app.api.endpoints.role_endpoints.get_role_service', return_value=mock_role_service):
-        response = client.post("/api/roles", headers=custom_headers, json=payload)
-    
-    # Verify the service was called with correct parameters
-    mock_role_service.create_role.assert_called_once_with(test_user_id, RoleType.CLIENT)
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["message"] == f"Role {RoleType.CLIENT.value} assigned successfully"
+    response = requests.get(f"{BASE_URL}/api/roles/global/{test_user_id}", headers=headers)
+    return response.status_code
 
-def test_create_role_handles_missing_role_type():
-    payload = {}  # Missing role_type field
-    response = client.post("/api/roles", headers=headers, json=payload)
-    
-    assert response.status_code == 422, f"Expected status code 422, but got {response.status_code}"
-    error_detail = response.json()["detail"]
-    assert any("role_type" in str(error).lower() for error in error_detail)
+@pytest.mark.asyncio
+async def test_get_global_role_concurrent_performance():
+    num_requests = 1000
+    user_ids = [generate_userid() for _ in range(num_requests)]
+
+    start_time = asyncio.get_event_loop().time()
+    responses = await asyncio.gather(*[make_fake_request(user_id) for user_id in user_ids])
+    end_time = asyncio.get_event_loop().time()
+
+    total_time = end_time - start_time
+    avg_response_time = total_time / num_requests
+
+    assert avg_response_time < 0.1, f"Average response time ({avg_response_time:.3f}s) exceeded 0.1s threshold"
+    assert all(status == 404 for status in responses), "All responses should be 404 (Not Found) for non-existent roles"
+
+    print(f"")
+    print(f"Average response time for fake user_id's: {avg_response_time:.3f} seconds")
+
+    # Now, test with correct requests
+    start_time = asyncio.get_event_loop().time()
+    responses = await asyncio.gather(*[make_correct_request(user_id) for user_id in user_ids])
+    end_time = asyncio.get_event_loop().time()
+
+    total_time = end_time - start_time
+    avg_response_time = total_time / num_requests
+
+    assert avg_response_time < 0.1, f"Average response time ({avg_response_time:.3f}s) exceeded 0.1s threshold"
+    assert all(status == 200 for status in responses), "All responses should be 200(ok) for existent roles"
+
+    print(f"Average response time with creation user_id's: {avg_response_time:.3f} seconds")

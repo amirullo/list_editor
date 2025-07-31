@@ -1,26 +1,18 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Table
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from sqlalchemy.sql import func
+from .base import BaseModel
 
-Base = declarative_base()
-
-# Association table for many-to-many relationship between lists and users
-list_users = Table(
-    'list_users',
-    Base.metadata,
-    Column('list_id', Integer, ForeignKey('lists.id'), primary_key=True),
-    Column('user_id', String, ForeignKey('users.id'), primary_key=True)
-)
-
-class List(Base):
+class List(BaseModel):
     __tablename__ = "lists"
     
-    id = Column(Integer, autoincrement=True, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    creator_id = Column(String, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     # Relationships
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
-    users = relationship("User", secondary=list_users, back_populates="lists")
+    list_users = relationship("ListUser", back_populates="list", cascade="all, delete-orphan")
+    locks = relationship("Lock", back_populates="list", cascade="all, delete-orphan")

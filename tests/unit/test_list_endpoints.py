@@ -1,127 +1,107 @@
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-from app.models.role_model import RoleType
 import uuid
-from unittest.mock import patch
-from fastapi import HTTPException
+import requests
 import asyncio
 
-client = TestClient(app)
-user_id = str(uuid.uuid4())
-headers = {
-    "Content-Type": "application/json",
-    "X-User-ID": user_id
-}
+BASE_URL = "http://localhost:8000"
 
-def assign_client_role(headers):
-    """Assign client role to the test client."""
-    payload = {"role_type": RoleType.CLIENT.value}
-    client.post("/api/roles", headers=headers, json=payload)
+def generate_userid():
+    user_id = str(uuid.uuid4())
+    return user_id
 
-assign_client_role(headers)
-
-def test_create_list_with_no_items():
-    assign_client_role(headers)
-    payload = {
-        "list_create": {
-            "name": "Empty List"
-        }
-    }
-    response = client.post("/api/lists", headers=headers, json=payload)
-    assert response.status_code == 200
-    data = response.json()["data"]
-    assert data["name"] == payload["list_create"]["name"]
-    assert "items" not in data or len(data["items"]) == 0
-
-
-def test_create_list_with_multiple_items():
-
-    payload = {
-        "list_create": {
-            "name": "My List with Items"
-        },
-        "items": [
-            {"name": "Item 1", "description": "First item"},
-            {"name": "Item 2", "description": "Second item"},
-            {"name": "Item 3", "description": "Third item"}
-        ]
-    }
-    response = client.post("/api/lists", headers=headers, json=payload)
-    assert response.status_code == 200
-    data = response.json()["data"]
-    assert data["name"] == payload["list_create"]["name"]
-    assert len(data["items"]) == 3
-    assert data["items"][0]["name"] == "Item 1"
-    assert data["items"][1]["name"] == "Item 2"
-    assert data["items"][2]["name"] == "Item 3"
-
-
-
-
-def test_create_list_with_user_id():
-
-    test_user_id = str(uuid.uuid4())
+def create_global_role(test_user_id):
     headers = {
         "Content-Type": "application/json",
         "X-User-ID": test_user_id
     }
-    assign_client_role(headers)
-
     payload = {
-        "list_create": {
-            "name": "Test List"
-        }
+        "user_id": test_user_id,
+        "role_type": "client"
     }
+    response = requests.post(f"{BASE_URL}/api/roles/global", headers=headers, json=payload)
+    return response
 
-    with patch('app.api.endpoints.list_endpoints.ensure_client_role', return_value=test_user_id):
-        response = client.post("/api/lists", headers=headers, json=payload)
+def test_create_list_with_valid_data_no_items():
+    test_user_id = generate_userid()
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
-    assert response.json()["message"] == "List created successfully"
-    assert "id" in response.json()["data"]
-    assert response.json()["data"]["name"] == "Test List"
+    # Check if global role creation was successful
+    role_response = create_global_role(test_user_id)
+    print(f"")
+    print(f"Global role creation response: {role_response.status_code}, {role_response.text}")
 
-
-def test_create_list_unauthorized():
-    unauthorized_user_id = str(uuid.uuid4())
     headers = {
         "Content-Type": "application/json",
-        "X-User-ID": unauthorized_user_id
+        "X-User-ID": test_user_id
     }
     payload = {
         "list_create": {
-            "name": "Unauthorized List"
-        }
+            "name": "Valid Test List"
+        },
+        "items": None
     }
-    with patch('app.api.endpoints.list_endpoints.ensure_client_role',
-               side_effect=HTTPException(status_code=403, detail="Unauthorized")):
-        response = client.post("/api/lists", headers=headers, json=payload)
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "This action requires client role"
+    print(f"Sending payload: {payload}")
+    response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=payload)
+    print(f"Response status: {response.status_code}")
+    print(f"Response body: {response.text}")
 
+    if response.status_code != 200:
+        print(f"Expected status code 200, but got {response.status_code}. Error detail: {response.text}")
 
-def test_get_lists():
-    response = client.get("/api/lists")
     assert response.status_code == 200
-    assert isinstance(response.json()["data"], list)
+    data = response.json()["data"]
+    assert data["name"] == payload["list_create"]["name"]
+    assert "id" in data
+    assert response.json()["status"] == "success"
+    assert response.json()["message"] == "List created successfully"
 
+def test_get_all_lists_multiple_lists_success():
+    test_user_id = generate_userid()
+    
+    # Create global role first
+    role_response = create_global_role(test_user_id)
+    assert role_response.status_code == 200
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": test_user_id
+    }
+    
+    # Create multiple lists
+    list_names = ["First Test List", "Second Test List", "Third Test List"]
+    created_list_ids = []
+    
+    for list_name in list_names:
+        payload = {
+            "list_create": {
+                "name": list_name
+            },
+            "items": None
+        }
+        response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=payload)
+        assert response.status_code == 200
+        created_list_ids.append(response.json()["data"]["id"])
+    
+    # Get all lists
+    response = requests.get(f"{BASE_URL}/api/lists", headers=headers)
 
-# def test_get_list_by_id():
-#     # First, create a list to ensure there is one to retrieve
-#     payload = {
-#         "list_create": {  # Wrap the payload in 'list_create'
-#             "name": "Test List"
-#         }
-#     }
-#     create_response = client.post("/api/lists", headers=headers, json=payload)
-#     list_id = create_response.json()["data"]["id"]
-#
-#     # Now, retrieve the list by ID
-#     response = client.get(f"/api/lists/{list_id}", headers=headers)
-#     assert response.status_code == 200
-#     data = response.json()["data"]
-#     assert data["id"] == list_id
-
+    print(f"")
+    print(f"Response status: {response.status_code}")
+    print(f"Response body: {response.text}")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["message"] == "Lists retrieved successfully"
+    assert len(data["data"]) == 3
+    
+    # Verify all created lists are returned
+    returned_list_names = [list_data["name"] for list_data in data["data"]]
+    for list_name in list_names:
+        assert list_name in returned_list_names
+    
+    # Verify all returned lists have required fields
+    for list_data in data["data"]:
+        assert "id" in list_data
+        assert "name" in list_data
+        assert list_data["id"] in created_list_ids

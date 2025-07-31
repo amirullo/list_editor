@@ -1,96 +1,156 @@
-from fastapi import Depends, Header
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
-import uuid
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
+from app.models.global_role_model import GlobalRoleType
+from app.models.list_role_model import ListRoleType
+from app.services.global_role_service import GlobalRoleService
+from app.services.list_role_service import ListRoleService
+from app.services.list_service import ListService
+from app.services.item_service import ItemService
+from app.services.lock_service import LockService
+from app.repositories.global_role_repository import GlobalRoleRepository
+from app.repositories.list_user_repository import ListUserRepository
 from app.repositories.list_repository import ListRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.user_repository import UserRepository
-from app.services.list_service import ListService
-from app.services.item_service import ItemService
-from app.models.role_model import RoleType
-from app.core.exceptions import ForbiddenException
+from typing import Optional
 
-def get_user_id(x_user_id: Optional[str] = Header(None)) -> str:
-    """
-    Get user ID from header or generate a new one
-    """
+def get_user_id(x_user_id: str = Header(..., alias="X-User-ID")) -> str:
+    """Get user ID from request headers"""
     if not x_user_id:
-        return str(uuid.uuid4())
+        raise HTTPException(status_code=401, detail="User ID header required")
     return x_user_id
 
-# Repository dependencies
+def get_global_role_repository(db: Session = Depends(get_db)) -> GlobalRoleRepository:
+    """Dependency to get global role repository"""
+    return GlobalRoleRepository(db)
+
+def get_list_user_repository(db: Session = Depends(get_db)) -> ListUserRepository:
+    """Dependency to get list user repository"""
+    return ListUserRepository(db)
+
 def get_list_repository(db: Session = Depends(get_db)) -> ListRepository:
+    """Dependency to get list repository"""
     return ListRepository(db)
 
 def get_item_repository(db: Session = Depends(get_db)) -> ItemRepository:
+    """Dependency to get item repository"""
     return ItemRepository(db)
 
 def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
+    """Dependency to get user repository"""
     return UserRepository(db)
 
-# Service dependencies
-def get_list_service(
-    db: Session = Depends(get_db),
-    list_repo: ListRepository = Depends(get_list_repository)
-) -> ListService:
-    return ListService(db, list_repo)
+def get_global_role_service(
+    global_role_repo: GlobalRoleRepository = Depends(get_global_role_repository)
+) -> GlobalRoleService:
+    """Dependency to get global role service"""
+    return GlobalRoleService(global_role_repo)
+
+def get_list_role_service(
+    list_user_repo: ListUserRepository = Depends(get_list_user_repository)
+) -> ListRoleService:
+    """Dependency to get list role service"""
+    return ListRoleService(list_user_repo)
+
+def get_lock_service(db: Session = Depends(get_db)) -> LockService:
+    """Dependency to get lock service"""
+    return LockService(db)
+
+async def get_list_service(db: Session = Depends(get_db)) -> ListService:
+    # Import only what we know exists and works
+    from app.repositories.list_repository import ListRepository
+    from app.repositories.user_repository import UserRepository
+    from app.repositories.list_user_repository import ListUserRepository
+    
+    # Create repositories
+    list_repository = ListRepository(db)
+    user_repository = UserRepository(db)
+    list_user_repository = ListUserRepository(db)
+    
+    # Get the services that already work
+    global_role_service = get_global_role_service(db)
+    list_role_service = get_list_role_service(db)
+    item_service = get_item_service(db)
+    
+    # Create ListService with all required arguments
+
+    return ListService(
+        list_repository=list_repository,
+        db=db,
+        list_user_repository=list_user_repository,
+        user_repository=user_repository,
+        global_role_service=global_role_service,
+        list_role_service=list_role_service,
+        item_service=item_service
+    )
 
 def get_item_service(
-    db: Session = Depends(get_db),
     item_repo: ItemRepository = Depends(get_item_repository),
-    list_repo: ListRepository = Depends(get_list_repository)
+    list_repo: ListRepository = Depends(get_list_repository),
+    global_role_service: GlobalRoleService = Depends(get_global_role_service),
+    list_role_service: ListRoleService = Depends(get_list_role_service)
 ) -> ItemService:
-    return ItemService(db, item_repo, list_repo)
+    """Dependency to get item service"""
+    return ItemService(
+        item_repository=item_repo,
+        list_repository=list_repo,
+        global_role_service=global_role_service,
+        list_role_service=list_role_service
+    )
 
-# Optional services - add if they exist
-try:
-    from app.repositories.lock_repository import LockRepository
-    from app.services.lock_service import LockService
-    
-    def get_lock_repository(db: Session = Depends(get_db)) -> LockRepository:
-        return LockRepository(db)
-    
-    def get_lock_service(
-        db: Session = Depends(get_db),
-        lock_repo: LockRepository = Depends(get_lock_repository)
-    ) -> LockService:
-        return LockService(db, lock_repo)
-except ImportError:
-    def get_lock_service():
-        return None
-
-try:
-    from app.repositories.role_repository import RoleRepository
-    from app.services.role_service import RoleService
-    
-    def get_role_repository(db: Session = Depends(get_db)) -> RoleRepository:
-        return RoleRepository(db)
-    
-    def get_role_service(
-        db: Session = Depends(get_db)
-    ) -> RoleService:
-        return RoleService(db)
-except ImportError:
-    def get_role_service():
-        return None
-
-def get_user_role(
+def get_user_global_role(
     user_id: str = Depends(get_user_id),
-    role_service: Optional[RoleService] = Depends(get_role_service)
-) -> RoleType:
-    """Get user role for authorization"""
-    if not role_service:
-        return RoleType.CLIENT  # Default role if role service not available
-    
-    role = role_service.get_role(user_id)
+    global_role_service: GlobalRoleService = Depends(get_global_role_service)
+) -> GlobalRoleType:
+    """Get user global role for authorization"""
+    role = global_role_service.get_role(user_id)
     if not role:
-        # Auto-assign CLIENT role if none exists (following README's client/worker pattern)
-        role = role_service.create_role(user_id, RoleType.CLIENT)
+        # Auto-assign CLIENT role if none exists
+        role = global_role_service.create_role(user_id, GlobalRoleType.CLIENT)
     return role.role_type
 
-def require_worker_role(role: RoleType = Depends(get_user_role)):
-    """Dependency to ensure user has worker role"""
-    if role != RoleType.WORKER:
-        raise ForbiddenException("Worker role required")
+def get_user_list_role(list_id: int):
+    """Factory function to create list role dependency for specific list"""
+    def _get_user_list_role(
+        user_id: str = Depends(get_user_id),
+        list_role_service: ListRoleService = Depends(get_list_role_service)
+    ) -> Optional[ListRoleType]:
+        return list_role_service.get_user_role_in_list(user_id, list_id)
+    return _get_user_list_role
+
+def require_global_role(required_role: GlobalRoleType):
+    """Factory function to create role requirement dependency"""
+    def _require_role(
+        user_role: GlobalRoleType = Depends(get_user_global_role)
+    ) -> GlobalRoleType:
+        if user_role != required_role:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Required role: {required_role.value}, current role: {user_role.value}"
+            )
+        return user_role
+    return _require_role
+
+def require_list_access(list_id: int):
+    """Factory function to require list access"""
+    def _require_access(
+        user_id: str = Depends(get_user_id),
+        list_role_service: ListRoleService = Depends(get_list_role_service)
+    ) -> str:
+        if not list_role_service.user_has_access(user_id, list_id):
+            raise HTTPException(status_code=403, detail="Access denied to this list")
+        return user_id
+    return _require_access
+
+def require_list_creator(list_id: int):
+    """Factory function to require list creator role"""
+    def _require_creator(
+        user_id: str = Depends(get_user_id),
+        list_role_service: ListRoleService = Depends(get_list_role_service)
+    ) -> str:
+        if not list_role_service.is_creator(user_id, list_id):
+            raise HTTPException(status_code=403, detail="Only list creator can perform this action")
+        return user_id
+    return _require_creator

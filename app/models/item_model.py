@@ -9,6 +9,7 @@ class Item(BaseModel):
 
     id = Column(Integer, autoincrement=True, primary_key=True)
     name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
     category = Column(String, nullable=True)
     quantity = Column(Integer, default=1)
     price = Column(Float, nullable=True)
@@ -16,3 +17,4 @@ class Item(BaseModel):
 
     # Relationships
     list = relationship("List", back_populates="items")
+

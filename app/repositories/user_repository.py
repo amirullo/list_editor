@@ -1,22 +1,23 @@
 from .base_repository import BaseRepository
-from app.models.user_model import User
+
+from app.models.global_role_model import GlobalRole
 from sqlalchemy.orm import Session
 from typing import Optional
 
-class UserRepository(BaseRepository[User]):
+class UserRepository(BaseRepository[GlobalRole]):
     def __init__(self, db: Session):
-        super().__init__(User, db)
+        super().__init__(GlobalRole, db)
 
-    def get_by_id(self, user_id: str) -> Optional[User]:
-        return self.db.query(User).filter(User.id == user_id).first()
+    def get_by_id(self, user_id: str) -> Optional[GlobalRole]:
+        return self.db.query(GlobalRole).filter(GlobalRole.user_id == user_id).first()
 
-    def create_if_not_exists(self, user_id: str) -> User:
-        existing_user = self.get_by_id(user_id)
-        if existing_user:
-            return existing_user
-        
-        new_user = User(id=user_id)
-        self.db.add(new_user)
-        self.db.commit()
-        self.db.refresh(new_user)
-        return new_user
+    def create_if_not_exists(self, user_id: str) -> GlobalRole:
+        """Create user if doesn't exist"""
+        existing = self.db.query(GlobalRole).filter(GlobalRole.user_id == user_id).first()
+        if not existing:
+            user = GlobalRole(user_id=user_id)
+            self.db.add(user)
+            self.db.commit()
+            self.db.refresh(user)
+            return user
+        return existing

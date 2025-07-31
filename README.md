@@ -1,16 +1,16 @@
 
 # List Editor
 
-A modern, scalable list management application built with FastAPI that provides secure, participant-based collaboration on shared lists. The system uses UUID-based authentication and implements fine-grained access controls for collaborative list editing.
+A list management application that provides secure, participant-based collaboration on shared lists.
 
 ## Overview
 
-List Editor is a collaborative list management system designed for teams and individuals who need to share and manage lists efficiently. Built with modern Python technologies, it provides a robust API for creating, sharing, and managing lists with real-time collaboration features.
+List Editor is a collaborative list management system designed for teams and individuals who need to share and manage lists efficiently. Built with modern Python technologies, it provides a robust API for creating, sharing, and managing lists with collaboration features.
 
 ### Key Highlights
 
 - **Participant-based Access Control**: Fine-grained permissions for list creators and participants
-- **Real-time Collaboration**: Concurrent editing with locking mechanisms
+- **Collaboration**: Concurrent editing with locking mechanisms
 - **UUID-based Authentication**: Secure, stateless authentication system
 - **RESTful API**: Clean, well-documented API endpoints
 - **Scalable Architecture**: Modular design following clean architecture principles
@@ -45,6 +45,7 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Role-based Permissions**: Creator vs. participant privilege levels
 -  **Access Validation**: Strict access control on all operations
 -  **Data Isolation**: Users only see lists they have access to
+-  **Participant Management**: Add and remove users from lists (creator only)
 
 #### Technical Features
 -  **RESTful API**: Clean, intuitive API design
@@ -53,6 +54,7 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Database Persistence**: SQLite with SQLAlchemy ORM
 -  **Automatic Timestamps**: Creation and modification tracking
 -  **CORS Support**: Cross-origin resource sharing enabled
+-  **Containerization**: Docker support for easy deployment
 
 ## Architecture
 
@@ -70,6 +72,43 @@ The application follows a layered architecture pattern with clear separation of 
 │   Model Layer   │  ← SQLAlchemy models, database schema
 └─────────────────┘
 ```
+
+#### 1. API Layer (`app/api/`)
+- **Endpoints**: FastAPI route handlers for HTTP requests
+- **Dependencies**: Dependency injection for services and authentication
+- **Request/Response**: HTTP request processing and response formatting
+
+#### 2. Service Layer (`app/services/`)
+- **Business Logic**: Core application logic and workflows
+- **Data Orchestration**: Coordination between multiple repositories
+- **Validation**: Business rule validation and enforcement
+- **Notifications**: User notification and messaging services
+
+#### 3. Repository Layer (`app/repositories/`)
+- **Data Access**: Database operations and query management
+- **CRUD Operations**: Create, Read, Update, Delete operations for entities
+- **Query Optimization**: Efficient database queries and relationships
+- **Transaction Management**: Database transaction handling
+
+#### 4. Model Layer (`app/models/`)
+- **Database Schema**: SQLAlchemy models defining table structures
+- **Relationships**: Entity relationships and foreign key constraints
+- **Data Integrity**: Database-level constraints and validations
+
+#### 5. Schema Layer (`app/schemas/`)
+- **Data Validation**: Pydantic models for request/response validation
+- **Type Safety**: Strong typing for API contracts
+- **Serialization**: Data transformation between layers
+
+#### 6. Core Layer (`app/core/`)
+- **Configuration**: Application settings and environment management
+- **Database**: Database connection and session management
+- **Exceptions**: Custom exception classes and error handling
+
+#### 7. Utilities (`app/utils/`)
+- **Logging**: Application logging and monitoring
+- **UUID Generation**: Unique identifier creation
+- **Helper Functions**: Common utility functions
 
 ### Design Principles
 
@@ -92,7 +131,7 @@ The application follows a layered architecture pattern with clear separation of 
 
 1. **Clone the Repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/amirullo/list_editor.git
    cd list_editor
    ```
 2. **Run the application:**
@@ -172,3 +211,91 @@ list_editor/
 │
 ├──
 ```
+
+## API Endpoints
+
+### List Management
+- `POST /api/lists/` - Create a new list
+- `GET /api/lists/` - Get all lists for authenticated user
+- `GET /api/lists/{list_id}` - Get specific list details
+- `PUT /api/lists/{list_id}` - Update list information
+- `DELETE /api/lists/{list_id}` - Delete list (creator only)
+
+### User Management
+- `POST /api/lists/{list_id}/users` - Add user to list (creator only)
+- `DELETE /api/lists/{list_id}/users/{user_id}` - Remove user from list (creator only)
+
+### Item Management
+- `POST /api/lists/{list_id}/items` - Create new item in list
+- `GET /api/lists/{list_id}/items` - Get all items in list
+- `PUT /api/lists/{list_id}/items/{item_id}` - Update item
+- `DELETE /api/lists/{list_id}/items/{item_id}` - Delete item
+
+### Locking System
+- `POST /api/lists/{list_id}/lock` - Acquire lock on list
+- `DELETE /api/lists/{list_id}/lock` - Release lock on list
+
+### Synchronization
+- `GET /api/sync/{list_id}` - Manual synchronization endpoint
+
+### Role Management
+- `GET /api/roles/` - Get available roles
+- `POST /api/roles/assign` - Assign role to user
+
+## Data Models
+
+### List
+- id: Integer primary key
+- name: String (required)
+- description: Text (optional)
+- created_at: Timestamp
+- updated_at: Timestamp
+
+### Item
+- id: Integer primary key
+- name: String (required)
+- description: Text (optional)
+- quantity: Integer (default: 1)
+- completed: Boolean (default: false)
+- list_id: Foreign key to List
+
+### ListUser (Association)
+   - list_id: Foreign key to List
+   - user_id: UUID string
+   - role: Enum (creator, participant)
+   - joined_at: Timestamp
+
+## Error Handling
+   The API returns structured error responses:
+   ```
+   {
+     "status": "error",
+     "message": "Descriptive error message",
+     "data": null
+   }
+   ```
+### Common HTTP status codes:
+- 200: Success
+- 400: Bad Request (validation errors)
+- 401: Unauthorized (missing/invalid user ID)
+- 403: Forbidden (insufficient permissions)
+- 404: Not Found (resource doesn't exist)
+- 409: Conflict (locking conflicts)
+- 500: Internal Server Error
+
+## Roles 
+
+### Global roles
+- CLIENT - only he can change (WORKER can't change) description of the list and can change price of the item.
+- WORKER - only he can change (CLIENT can't change) quantity of the item.
+
+
+### List roles (Global role restrictions override List role privileges)
+- CREATOR - who created the list. only he can delete the list. he has full access to the list and corresponding items to the list, until he has restrictions on Global role level.
+- USER - additional users that can read everything in the list and corresponding items to the list, and modify some parts of the list: add or modify items, until he has restrictions on Global role level.
+
+### Examples: 
+- CREATOR + CLIENT: Can do everything including change price, but NOT quantity
+- CREATOR + WORKER: Can do everything including change quantity, but NOT price  
+- USER + CLIENT: Can modify items including price, but NOT quantity
+- USER + WORKER: Can modify items including quantity, but NOT price

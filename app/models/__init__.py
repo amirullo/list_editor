@@ -1,19 +1,22 @@
 from .base import Base
+from .global_role_model import GlobalRole
+from .list_role_model import ListRole
+from .list_user_model import ListUser
+from .list_model import List
+from .item_model import Item
+from .lock_model import Lock
 
 # Import models in dependency order
-from .user_model import User
-from .list_model import List, list_users
-from .item_model import Item
-from .role_model import Role, RoleType
 
 # Export all models
-__all__ = ["Base", "User", "List", "Item", "list_users"]
+__all__ = [
+    "Base",
+    "GlobalRole", 
+    "ListRole",
+    "ListUser",
+    "Lock",
+    "List",
+    "Item",
+]
 
-try:
-    from .lock_model import Lock
-except ImportError:
-    pass
 
-# Add to __all__ only if they were successfully imported
-if 'Lock' in locals():
-    __all__.append("Lock")
