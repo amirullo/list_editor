@@ -14,7 +14,7 @@ from app.repositories.list_user_repository import ListUserRepository
 from app.repositories.list_repository import ListRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.user_repository import UserRepository
-from typing import Optional
+from typing import Optional, Coroutine, Any
 
 def get_user_id(x_user_id: str = Header(..., alias="X-User-ID")) -> str:
     """Get user ID from request headers"""
@@ -133,24 +133,22 @@ def require_global_role(required_role: GlobalRoleType):
         return user_role
     return _require_role
 
-def require_list_access(list_id: int):
-    """Factory function to require list access"""
-    def _require_access(
-        user_id: str = Depends(get_user_id),
-        list_role_service: ListRoleService = Depends(get_list_role_service)
-    ) -> str:
-        if not list_role_service.user_has_access(user_id, list_id):
-            raise HTTPException(status_code=403, detail="Access denied to this list")
-        return user_id
-    return _require_access
+async def require_list_access(
+    list_id: int,
+    user_id: str = Depends(get_user_id),
+    list_role_service: ListRoleService = Depends(get_list_role_service)
+) -> None:
+    """Dependency to ensure the user has access to the list."""
+    has_access = await list_role_service.user_has_access_to_list(user_id, list_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied to this list")
 
-def require_list_creator(list_id: int):
-    """Factory function to require list creator role"""
-    def _require_creator(
-        user_id: str = Depends(get_user_id),
-        list_role_service: ListRoleService = Depends(get_list_role_service)
-    ) -> str:
-        if not list_role_service.is_creator(user_id, list_id):
-            raise HTTPException(status_code=403, detail="Only list creator can perform this action")
-        return user_id
-    return _require_creator
+async def require_list_creator(
+    list_id: int,
+    user_id: str = Depends(get_user_id),
+    list_role_service: ListRoleService = Depends(get_list_role_service)
+) -> None:
+    """Dependency to ensure the user is the creator of the list."""
+    is_creator = await list_role_service.is_user_list_creator(user_id, list_id)
+    if not is_creator:
+        raise HTTPException(status_code=403, detail="Only list creator can perform this action")

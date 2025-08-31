@@ -19,7 +19,7 @@ class ListRepository(BaseRepository[List]):
         db_list = List(**list_data)
         self.db.add(db_list)
         self.db.flush()  # Get the ID
-        
+
         # Add items if provided
         if items_data:
             for item_data in items_data:
@@ -27,7 +27,7 @@ class ListRepository(BaseRepository[List]):
                 item_data['list_id'] = db_list.id
                 db_item = Item(**item_data)
                 self.db.add(db_item)
-        
+
         self.db.commit()
         self.db.refresh(db_list)
         return db_list
@@ -37,19 +37,19 @@ class ListRepository(BaseRepository[List]):
         result = self.db.query(List).join(ListUser).filter(ListUser.user_id == user_id).all()
         return result
 
-    def get_list_by_id_and_user(self, list_id: str, user_id: str) -> Optional[List]:
+    def get_list_by_id_and_user(self, list_id: int, user_id: str) -> Optional[List]:
         return self.db.query(List).join(ListUser).filter(
             List.id == list_id,
             ListUser.user_id == user_id
         ).first()
 
-    def get_list_by_id_and_creator(self, list_id: str, creator_id: str) -> Optional[List]:
+    def get_list_by_id_and_creator(self, list_id: int, creator_id: str) -> Optional[List]:
         return self.db.query(List).filter(
             List.id == list_id,
             List.creator_id == creator_id
         ).first()
 
-    def update(self, list_id: str, list_update: Dict[str, Any]) -> List:
+    def update(self, list_id: int, list_update: Dict[str, Any]) -> List:
         db_list = self.db.query(List).filter(List.id == list_id).first()
         if not db_list:
             return None

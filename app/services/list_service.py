@@ -1,3 +1,4 @@
+
 from typing import List as TypeList, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,6 +67,10 @@ class ListService:
         list_users = self.list_user_repository.get_users_by_list_id(new_list.id)
         user_id_list = [lu.user_id for lu in list_users]
         
+        # Ensure creator is in the user_id_list
+        if creator_id not in user_id_list:
+            user_id_list.append(creator_id)
+        
         # Create response data with computed fields
         response_data = {
             'id': new_list.id,
@@ -95,7 +100,7 @@ class ListService:
         if not self.list_user_repository.user_has_access(user_id, list_id):
             raise ForbiddenException("You don't have access to this list")
         
-        db_list = self.list_repository.get_by_id(list_id)
+        db_list = self.list_repository.get_list_by_id_and_user(list_id, user_id)
         if not db_list:
             raise NotFoundException("List not found")
         
