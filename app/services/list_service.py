@@ -59,6 +59,13 @@ class ListService:
             role_type=ListRoleType.CREATOR
         )
         
+        # Handle items if provided
+        created_items = []
+        if items:
+            for item_create in items:
+                created_item = self.item_service.create_item(new_list.id, item_create, user_id)
+                created_items.append(created_item)
+        
         # Get all users with access to this list, which now includes the creator.
         list_users = self.list_user_repository.get_users_by_list_id(new_list.id)
         user_id_list = [lu.user_id for lu in list_users]
@@ -77,13 +84,9 @@ class ListService:
             'creator_id': creator_id,
             'user_id_list': user_id_list,
             'created_at': new_list.created_at,
-            'updated_at': new_list.updated_at
+            'updated_at': new_list.updated_at,
+            'items': created_items
         }
-        
-        # Handle items if provided
-        if items:
-            for item_create in items:
-                self.item_service.create_item(new_list.id, item_create, user_id)
         
         logger.info(f"Created list {new_list.id} with creator {user_id}")
         return ListInDB.model_validate(response_data)

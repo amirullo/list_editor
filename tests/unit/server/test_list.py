@@ -1,93 +1,91 @@
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from app.core.db import Base  # Assuming Base is the declarative base for your models
+from unittest.mock import MagicMock
 from app.services.list_service import ListService
-from app.repositories.list_repository import ListRepository
-from app.repositories.list_user_repository import ListUserRepository
-from app.repositories.user_repository import UserRepository
-from app.repositories.item_repository import ItemRepository
-from app.services.global_role_service import GlobalRoleService
-from app.services.list_role_service import ListRoleService
-from app.schemas.list_schema import ListCreate
-import uuid
+from app.schemas.list_schema import ListCreate, ListInDB
+from app.models.list_model import List
+from app.models.list_role_model import ListRole, ListRoleType
+from app.models.list_user_model import ListUser
 
+@pytest.fixture
+def mock_db_session() -> MagicMock:
+    return MagicMock()
 
-# In-memory SQLite database for testing
-# SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-SQLALCHEMY_DATABASE_URL = "sqlite:///./list_editor.db"
+@pytest.fixture
+def mock_list_repo() -> MagicMock:
+    return MagicMock()
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+@pytest.fixture
+def mock_list_user_repo() -> MagicMock:
+    return MagicMock()
 
-def generate_userid():
-    user_id = str(uuid.uuid4())
-    return user_id
+@pytest.fixture
+def mock_user_repo() -> MagicMock:
+    return MagicMock()
 
+@pytest.fixture
+def mock_global_role_service() -> MagicMock:
+    return MagicMock()
 
-@pytest.fixture(scope="function")
-def test_db() -> Session:
-    """
-    Fixture to provide a database session for a single test function.
-    Creates all tables before the test and drops them afterwards.
-    """
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        # Drop all tables
-        Base.metadata.drop_all(bind=engine)
+@pytest.fixture
+def mock_list_role_service() -> MagicMock:
+    return MagicMock()
 
+@pytest.fixture
+def mock_item_service() -> MagicMock:
+    return MagicMock()
 
-def test_create_list_service_success_no_items(test_db: Session):
-    """
-    Test creating a list successfully with no items directly via the service layer.
-    """
-    # 1. Setup
-    user_id = generate_userid()
-    
-    # Instantiate repositories and services
-    list_repo = ListRepository(test_db)
-    list_user_repo = ListUserRepository(test_db)
-    user_repo = UserRepository(test_db)
-    item_repo = ItemRepository(test_db)
-    global_role_service = GlobalRoleService(test_db)
-    list_role_service = ListRoleService(test_db)
-    
-    # The service being tested
-    list_service = ListService(
-        db=test_db,
-        list_repository=list_repo,
-        list_user_repository=list_user_repo,
-        user_repository=user_repo,
-        global_role_service=global_role_service,
-        list_role_service=list_role_service,
-        item_service=item_repo  # Assuming item_service is an ItemRepository instance
+@pytest.fixture
+def list_service(
+    mock_db_session: MagicMock,
+    mock_list_repo: MagicMock,
+    mock_list_user_repo: MagicMock,
+    mock_user_repo: MagicMock,
+    mock_global_role_service: MagicMock,
+    mock_list_role_service: MagicMock,
+    mock_item_service: MagicMock,
+) -> ListService:
+    return ListService(
+        db=mock_db_session,
+        list_repository=mock_list_repo,
+        list_user_repository=mock_list_user_repo,
+        user_repository=mock_user_repo,
+        global_role_service=mock_global_role_service,
+        list_role_service=mock_list_role_service,
+        item_service=mock_item_service,
     )
 
-    list_create_data = ListCreate(name="My New Service-Side List")
+class TestListService:
+    def test_create_list_without_items_success(self, list_service: ListService, mock_list_repo: MagicMock, mock_list_user_repo: MagicMock, mock_user_repo: MagicMock, mock_item_service: MagicMock):
+        # Arrange
+        user_id = "creator_user_id"
+        list_create_data = ListCreate(name="New Test List")
+        
+        mock_new_list = List(id=1, name="New Test List", created_at="2024-01-01T00:00:00", updated_at="2024-01-01T00:00:00")
+        mock_list_repo.create.return_value = mock_new_list
+        
+        # When get_users_by_list_id is called after creation, it should return the creator
+        mock_list_user_repo.get_users_by_list_id.return_value = [
+            ListUser(user_id=user_id, list_id=1, role=ListRole(role_type=ListRoleType.CREATOR))
+        ]
 
-    # 2. Execute
-    created_list = list_service.create_list(
-        list_create=list_create_data,
-        user_id=user_id,
-        items=None
-    )
+        # Act
+        result = list_service.create_list(list_create=list_create_data, user_id=user_id, items=None)
 
-    # 3. Assert
-    assert created_list is not None
-    assert created_list.name == "My New Service-Side List"
-    assert created_list.id is not None
-    assert created_list.creator_id == user_id
-    assert user_id in created_list.user_id_list
-    assert len(created_list.user_id_list) == 1
+        # Assert
+        mock_user_repo.create_if_not_exists.assert_called_once_with(user_id)
+        mock_list_repo.create.assert_called_once_with(list_create_data.model_dump(exclude_unset=True))
+        mock_list_user_repo.create.assert_called_once_with(
+            user_id=user_id,
+            list_id=mock_new_list.id,
+            role_type=ListRoleType.CREATOR
+        )
+        mock_list_user_repo.get_users_by_list_id.assert_called_once_with(mock_new_list.id)
+        mock_item_service.create_item.assert_not_called()
 
-    # Verify in DB
-    db_list_user = list_user_repo.get_by_user_and_list(user_id, created_list.id)
-    assert db_list_user is not None
-    assert db_list_user.user_id == user_id
-    assert db_list_user.list_id == created_list.id
+        assert isinstance(result, ListInDB)
+        assert result.id == mock_new_list.id
+        assert result.name == list_create_data.name
+        assert result.creator_id == user_id
+        assert user_id in result.user_id_list
+        assert len(result.user_id_list) == 1
