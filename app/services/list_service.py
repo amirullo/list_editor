@@ -59,13 +59,12 @@ class ListService:
             role_type=ListRoleType.CREATOR
         )
         
-        # Get creator_id from ListUser relationship
-        creator_list_user = self.list_user_repository.get_creator_by_list_id(new_list.id)
-        creator_id = creator_list_user.user_id if creator_list_user else user_id
-        
-        # Get all users with access to this list (for user_id_list)
+        # Get all users with access to this list, which now includes the creator.
         list_users = self.list_user_repository.get_users_by_list_id(new_list.id)
         user_id_list = [lu.user_id for lu in list_users]
+        
+        # The creator is the user who initiated this request.
+        creator_id = user_id
         
         # Ensure creator is in the user_id_list
         if creator_id not in user_id_list:
@@ -75,8 +74,8 @@ class ListService:
         response_data = {
             'id': new_list.id,
             'name': new_list.name,
-            'creator_id': creator_id,  # Computed from ListUser relationship
-            'user_id_list': user_id_list,  # Computed from ListUser relationships
+            'creator_id': creator_id,
+            'user_id_list': user_id_list,
             'created_at': new_list.created_at,
             'updated_at': new_list.updated_at
         }

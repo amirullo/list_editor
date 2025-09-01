@@ -50,7 +50,9 @@ class ListRepository(BaseRepository[List]):
         ).first()
 
     def update(self, list_id: int, list_update: Dict[str, Any]) -> List:
-        db_list = self.db.query(List).filter(List.id == list_id).first()
+        db_list = self.db.query(List).filter(
+            List.id == list_id
+        ).first()
         if not db_list:
             return None
         

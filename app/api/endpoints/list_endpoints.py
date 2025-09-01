@@ -115,7 +115,7 @@ async def add_user_to_list(
     _: None = Depends(require_list_creator)
 ):
     try:
-        updated_list = list_service.add_user_to_list(list_id, user_data, user_id)
+        updated_list = list_service.add_user_to_list(list_id, user_data.user_id_to_add, user_id)
         return ResponseModel(data=updated_list, message="User added to list successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))

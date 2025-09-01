@@ -34,3 +34,4 @@ typing_extensions==4.14.0
 urllib3==2.5.0
 uvicorn==0.34.3
 wrapt==1.17.2
+alembic==1.16.5
