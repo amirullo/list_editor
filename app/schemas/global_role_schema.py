@@ -1,19 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.models.global_role_model import GlobalRoleType
-from typing import Optional
+from datetime import datetime
 
 class GlobalRoleBase(BaseModel):
     user_id: str
-    role_type: GlobalRoleType
+    role: GlobalRoleType
 
 class GlobalRoleCreate(GlobalRoleBase):
     pass
 
 class GlobalRoleUpdate(BaseModel):
-    role_type: Optional[GlobalRoleType] = None
+    role: GlobalRoleType
 
 class GlobalRoleInDB(GlobalRoleBase):
     id: int
-    
-    class Config:
-        from_attributes = True
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

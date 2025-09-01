@@ -1,29 +1,25 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.models.list_role_model import ListRoleType
-from typing import Optional
+from datetime import datetime
 
 class ListRoleBase(BaseModel):
-    role_type: ListRoleType
-
-class ListRoleCreate(ListRoleBase):
     user_id: str
     list_id: int
+    role: ListRoleType
+
+class ListParticipant(BaseModel):
+    user_id: str
+    role: ListRoleType
+
+class ListRoleCreate(ListRoleBase):
+    pass
 
 class ListRoleUpdate(BaseModel):
-    role_type: Optional[ListRoleType] = None
+    role: ListRoleType
 
 class ListRoleInDB(ListRoleBase):
     id: int
-    user_id: str
-    list_id: int
-    
-    class Config:
-        from_attributes = True
+    created_at: datetime
+    updated_at: datetime
 
-# For API responses showing list participants
-class ListParticipant(BaseModel):
-    user_id: str
-    role_type: ListRoleType
-    
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

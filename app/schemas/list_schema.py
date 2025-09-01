@@ -1,8 +1,9 @@
+
 from typing import List as TypeList, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from .item_schema import ItemInDB
-# from app.schemas.list_role_schema import ListParticipant # <-- This line is causing the error, let's remove it for now.
+from app.schemas.list_role_schema import ListParticipant
 
 class ListBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
@@ -27,14 +28,11 @@ class ListInDB(BaseModel):
     updated_at: datetime
     items: TypeList[ItemInDB] = []
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ListWithParticipants(ListInDB):
     """Extended list info with participants"""
-    # This will be fixed later if needed, but for now, let's get the tests running.
-    # participants: TypeList[ListParticipant] = []
-    pass
+    participants: TypeList[ListParticipant] = []
 
 class ListAddUser(BaseModel):
     user_id: str = Field(..., min_length=1)
