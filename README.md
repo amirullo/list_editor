@@ -134,16 +134,30 @@ The application follows a layered architecture pattern with clear separation of 
    git clone https://github.com/amirullo/list_editor.git
    cd list_editor
    ```
-2. **Run the application:**
+
+2.**Run and Setup SQL-server (Postgres)**
+   ```bash
+   brew install postgresql
+   brew services start postgresql
+   /opt/homebrew/opt/postgresql@14/bin/createuser -s _postgres
+   brew services restart postgresql@14
+      
+   psql -U _postgres
+   CREATE DATABASE mydb;
+   CREATE USER dev WITH PASSWORD 'pymbep-koxzev-hokdU6';
+   GRANT ALL PRIVILEGES ON DATABASE mydb TO dev;
+   
+   pip install psycopg2-binary
+   pip install alembic
+   alembic upgrade head
+   ```
+   
+3.**Run the application:**
    ```bash
    docker build -t list_editor:test .
    docker run -p 8000:8000 list_editor:test
    ```
-3. **Run script examples (interact with) :**
-   ```bash
-   python ./scripts/create_list.py
-   python ./scripts/worker.py
-   ```
+
 
 4. **Access Application**
 
