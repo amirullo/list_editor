@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: f0c75a4edbaa
+Revision ID: d6f8b8ab9855
 Revises: 
-Create Date: 2025-09-01 02:56:56.156443
+Create Date: 2025-09-04 00:18:45.851199
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f0c75a4edbaa'
+revision: str = 'd6f8b8ab9855'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,7 +28,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('user_id')
+    # sa.UniqueConstraint('user_id')
     )
     op.create_table('list_roles',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -62,27 +62,27 @@ def upgrade() -> None:
     )
     op.create_table('list_users',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('user_id', sa.String(), nullable=False),
+    sa.Column('user_internal_id', sa.Integer(), nullable=False),
     sa.Column('list_id', sa.Integer(), nullable=False),
     sa.Column('role_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['list_id'], ['lists.id'], ),
     sa.ForeignKeyConstraint(['role_id'], ['list_roles.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['global_roles.user_id'], ),
+    sa.ForeignKeyConstraint(['user_internal_id'], ['global_roles.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('user_id', 'list_id', name='unique_user_list')
+    sa.UniqueConstraint('user_internal_id', 'list_id', name='unique_user_list')
     )
     op.create_index(op.f('ix_list_users_id'), 'list_users', ['id'], unique=False)
     op.create_table('locks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('list_id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.String(), nullable=False),
+    sa.Column('user_internal_id', sa.Integer(), nullable=False),
     sa.Column('acquired_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['list_id'], ['lists.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['global_roles.user_id'], ),
+    sa.ForeignKeyConstraint(['user_internal_id'], ['global_roles.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('list_id')
     )

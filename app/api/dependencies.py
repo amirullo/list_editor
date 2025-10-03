@@ -22,6 +22,22 @@ def get_user_id(x_user_id: str = Header(..., alias="X-User-ID")) -> str:
         raise HTTPException(status_code=401, detail="User ID header required")
     return x_user_id
 
+def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
+    return UserRepository(db)
+
+def get_current_user_id(
+    external_user_id: str = Depends(get_user_id),
+    user_repo: UserRepository = Depends(get_user_repository)
+) -> int:
+    """
+    Gets the external user_id from the header, finds the user in the DB,
+    and returns their internal integer ID.
+    """
+    user = user_repo.get_by_user_id(external_user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found or not authorized")
+    return user.id
+
 def get_global_role_repository(db: Session = Depends(get_db)) -> GlobalRoleRepository:
     """Dependency to get global role repository"""
     return GlobalRoleRepository(db)
@@ -37,10 +53,6 @@ def get_list_repository(db: Session = Depends(get_db)) -> ListRepository:
 def get_item_repository(db: Session = Depends(get_db)) -> ItemRepository:
     """Dependency to get item repository"""
     return ItemRepository(db)
-
-def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
-    """Dependency to get user repository"""
-    return UserRepository(db)
 
 def get_global_role_service(
     global_role_repo: GlobalRoleRepository = Depends(get_global_role_repository)

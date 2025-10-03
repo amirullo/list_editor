@@ -22,8 +22,8 @@ class ListUpdate(BaseModel):
 class ListInDB(BaseModel):
     id: int
     name: str = Field(..., min_length=1)
-    creator_id: Optional[str] = None  # Derived field
-    user_id_list: TypeList[str] = Field(default_factory=list)  # Computed from ListUser relationships
+    creator_id: Optional[int] = None
+    user_id_list: TypeList[int] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     items: TypeList[ItemInDB] = []

@@ -32,18 +32,18 @@ class ListRepository(BaseRepository[List]):
         self.db.refresh(db_list)
         return db_list
 
-    def get_user_lists(self, user_id: str) -> TypeList[List]:
+    def get_user_lists(self, user_internal_id: int) -> TypeList[List]:
         """Get all lists user has access to"""
-        result = self.db.query(List).join(ListUser).filter(ListUser.user_id == user_id).all()
+        result = self.db.query(List).join(ListUser).filter(ListUser.user_internal_id == user_internal_id).all()
         return result
 
-    def get_list_by_id_and_user(self, list_id: int, user_id: str) -> Optional[List]:
+    def get_list_by_id_and_user(self, list_id: int, user_internal_id: int) -> Optional[List]:
         return self.db.query(List).join(ListUser).filter(
             List.id == list_id,
-            ListUser.user_id == user_id
+            ListUser.user_internal_id == user_internal_id
         ).first()
 
-    def get_list_by_id_and_creator(self, list_id: int, creator_id: str) -> Optional[List]:
+    def get_list_by_id_and_creator(self, list_id: int, creator_id: int) -> Optional[List]:
         return self.db.query(List).filter(
             List.id == list_id,
             List.creator_id == creator_id

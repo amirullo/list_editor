@@ -37,11 +37,11 @@ class ListService:
         self.list_role_service = list_role_service
         self.item_service = item_service  # Initialize item_service
 
-    def create_list(self, list_create: ListCreate, user_id: str, items: Optional[TypeList[ItemCreate]] = None) -> ListInDB:
+    def create_list(self, list_create: ListCreate, user_internal_id: int, items: Optional[TypeList[ItemCreate]] = None) -> ListInDB:
         """Create a new list and assign creator role to the user"""
         
         # Ensure user exists
-        self.user_repository.create_if_not_exists(user_id)
+        self.user_repository.create_if_not_exists(str(user_internal_id))
         
         # Prepare list data (no creator_id needed)
         list_data = list_create.model_dump(exclude_unset=True)
@@ -54,7 +54,7 @@ class ListService:
         
         # Create ListUser entry with CREATOR role for the user
         self.list_user_repository.create(
-            user_id=user_id,
+            user_id=str(user_internal_id),
             list_id=new_list.id,
             role_type=ListRoleType.CREATOR
         )
@@ -63,15 +63,15 @@ class ListService:
         created_items = []
         if items:
             for item_create in items:
-                created_item = self.item_service.create_item(new_list.id, item_create, user_id)
+                created_item = self.item_service.create_item(new_list.id, item_create, str(user_internal_id))
                 created_items.append(created_item)
         
         # Get all users with access to this list, which now includes the creator.
         list_users = self.list_user_repository.get_users_by_list_id(new_list.id)
-        user_id_list = [lu.user_id for lu in list_users]
+        user_id_list = [int(lu.user_id) for lu in list_users]
         
         # The creator is the user who initiated this request.
-        creator_id = user_id
+        creator_id = user_internal_id
         
         # Ensure creator is in the user_id_list
         if creator_id not in user_id_list:
@@ -88,35 +88,40 @@ class ListService:
             'items': created_items
         }
         
-        logger.info(f"Created list {new_list.id} with creator {user_id}")
+        logger.info(f"Created list {new_list.id} with creator {user_internal_id}")
         return ListInDB.model_validate(response_data)
 
-    def get_all_lists(self, user_id: str) -> TypeList[ListInDB]:
+    def get_all_lists(self, user_internal_id: int) -> TypeList[ListInDB]:
         """Get all lists accessible to user"""
-        db_lists = self.list_repository.get_user_lists(user_id)
+        db_lists = self.list_repository.get_user_lists(str(user_internal_id))
         return [ListInDB.model_validate(db_list) for db_list in db_lists]
 
 
-    def get_list(self, list_id: int, user_id: str) -> ListInDB:
+    def get_list(self, list_id: int, user_internal_id: int) -> ListInDB:
         # Check if user has access
-        if not self.list_user_repository.user_has_access(user_id, list_id):
+        if not self.list_user_repository.user_has_access(user_internal_id, list_id):
             raise ForbiddenException("You don't have access to this list")
         
-        db_list = self.list_repository.get_list_by_id_and_user(list_id, user_id)
+        db_list = self.list_repository.get_list_by_id_and_user(list_id, user_internal_id)
         if not db_list:
             raise NotFoundException("List not found")
+        db_list.user_id_list = []
+        for user in db_list.list_users:
+            db_list.user_id_list.append(user.user_internal_id)
+            if user.role_id == ListRoleType.CREATOR.value:
+                db_list.creator_id = user.user_internal_id
         
         return ListInDB.model_validate(db_list)
 
-    def update_list(self, list_id: int, list_update: ListUpdate, user_id: str) -> ListInDB:
+    def update_list(self, list_id: int, list_update: ListUpdate, user_internal_id: int) -> ListInDB:
         # Check if user has access to the list
-        if not self.list_user_repository.user_has_access(user_id, list_id):
+        if not self.list_user_repository.user_has_access(str(user_internal_id), list_id):
             raise ForbiddenException("You don't have access to this list")
         
         # Check if list is locked by another user
         from app.services.lock_service import LockService
         lock_service = LockService(self.db)
-        if not lock_service.check_lock(list_id, user_id):
+        if not lock_service.check_lock(list_id, str(user_internal_id)):
             raise LockException("List is locked by another user")
         
         update_data = list_update.model_dump(exclude_unset=True)
@@ -125,14 +130,15 @@ class ListService:
         if not updated_list:
             raise NotFoundException("List not found")
         
-        logger.info(f"Updated list {list_id} by user {user_id}")
+        logger.info(f"Updated list {list_id} by user {user_internal_id}")
         return ListInDB.model_validate(updated_list)
 
-    def delete_list(self, list_id: int, user_id: str) -> Dict[str, str]:
+    def delete_list(self, list_id: int, user_internal_id: int) -> Dict[str, str]:
         """Delete a list - only CREATOR can delete"""
         # Check if user is creator of the list
-        if not self.list_role_service.is_creator(user_id, list_id):
-            raise ForbiddenException("Only the creator can delete this list")
+        creator = self.list_user_repository.get_creator_by_list_id(list_id)
+        if not creator or int(creator.user_id) != user_internal_id:
+            raise PermissionException("Only the creator can delete the list")
         
         # Check if list exists
         db_list = self.list_repository.get_by_id(list_id)
@@ -144,12 +150,12 @@ class ListService:
         if not success:
             raise NotFoundException("List not found")
         
-        logger.info(f"Deleted list {list_id} by creator {user_id}")
+        logger.info(f"Deleted list {list_id} by creator {user_internal_id}")
         return {"message": "List deleted successfully", "list_id": str(list_id)}
 
-    def add_user_to_list(self, list_id: int, user_id_to_add: str, requester_id: str) -> ListInDB:
+    def add_user_to_list(self, list_id: int, user_id_to_add: str, requester_id: int) -> ListInDB:
         # Only creator can add users
-        if not self.list_user_repository.user_has_role(requester_id, list_id, ListRoleType.CREATOR):
+        if not self.list_user_repository.user_has_role(str(requester_id), list_id, ListRoleType.CREATOR):
             raise ForbiddenException("Only the creator can add users to this list")
         
         # Check if list exists
@@ -174,12 +180,12 @@ class ListService:
         logger.info(f"Added user {user_id_to_add} to list {list_id} by {requester_id}")
         return ListInDB.model_validate(db_list)
 
-    def remove_user_from_list(self, list_id: int, user_id_to_remove: str, requester_id: str) -> ListInDB:
+    def remove_user_from_list(self, list_id: int, user_id_to_remove: str, requester_id: int) -> ListInDB:
         # Only creator can remove users (and creator cannot remove themselves)
-        if not self.list_user_repository.user_has_role(requester_id, list_id, ListRoleType.CREATOR):
+        if not self.list_user_repository.user_has_role(str(requester_id), list_id, ListRoleType.CREATOR):
             raise ForbiddenException("Only the creator can remove users from this list")
         
-        if requester_id == user_id_to_remove:
+        if requester_id == int(user_id_to_remove):
             raise ForbiddenException("Creator cannot remove themselves from the list")
         
         # Check if list exists
@@ -195,16 +201,16 @@ class ListService:
         logger.info(f"Removed user {user_id_to_remove} from list {list_id} by {requester_id}")
         return ListInDB.model_validate(db_list)
 
-    def check_user_access(self, user_id: str, list_id: int) -> bool:  # Fix: list_id should be int
-        return self.list_user_repository.get_by_user_and_list(user_id, list_id) is not None
+    def check_user_access(self, user_internal_id: int, list_id: int) -> bool:  # Fix: list_id should be int
+        return self.list_user_repository.get_by_user_and_list(str(user_internal_id), list_id) is not None
 
-    def update_list_description(self, list_id: int, user_id: str, description: str) -> Dict[str, str]:
+    def update_list_description(self, list_id: int, user_internal_id: int, description: str) -> Dict[str, str]:
         # Check if user has access to the list (list role check)
-        if not self.list_role_service.user_has_access(user_id, list_id):
+        if not self.list_user_repository.user_has_access(str(user_internal_id), list_id):
             raise ForbiddenException("No access to this list")
         
         # Check ADDITIONAL restriction from global role - only CLIENT can change description
-        global_role = self.global_role_service.get_role(user_id)
+        global_role = self.global_role_service.get_role(str(user_internal_id))
         global_role_type = global_role.role_type if global_role else None
         
         if global_role_type != GlobalRoleType.CLIENT:
@@ -216,13 +222,13 @@ class ListService:
         if not updated_list:
             raise NotFoundException("List not found")
         
-        logger.info(f"Updated list {list_id} description by user {user_id}")
+        logger.info(f"Updated list {list_id} description by user {user_internal_id}")
         return {"message": "List description updated successfully"}
 
-    def _notify_list_participants(self, db_list, message: str, actor_id: str):
+    def _notify_list_participants(self, db_list, message: str, actor_id: int):
         """Notify all list participants about changes"""
         # Get all participants (creator + users in user_id_list)
-        participants = [db_list.creator_id]
+        participants = [int(db_list.creator_id)]
         if db_list.user_id_list:
             participants.extend(db_list.user_id_list)
         
@@ -234,7 +240,12 @@ class ListService:
         # Send notifications
         for participant_id in participants:
             self.notification_service.create_notification(
-                user_id=participant_id,
+                user_id=str(participant_id),
                 message=message,
                 list_id=db_list.id
             )
+
+    def get_all_lists(self, user_internal_id: int) -> TypeList[ListInDB]:
+        """Get all lists accessible to user"""
+        db_lists = self.list_repository.get_user_lists(str(user_internal_id))
+        return [ListInDB.model_validate(db_list) for db_list in db_lists]

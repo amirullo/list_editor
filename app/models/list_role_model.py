@@ -4,8 +4,8 @@ from .base import BaseModel
 import enum
 
 class ListRoleType(enum.Enum):
-    CREATOR = "creator"
-    USER = "user"
+    CREATOR = 1 #"creator"
+    USER = 2 #"user"
 
 class ListRole(BaseModel):
     __tablename__ = "list_roles"

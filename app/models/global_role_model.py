@@ -10,7 +10,7 @@ class GlobalRoleType(enum.Enum):
 class GlobalRole(BaseModel):
     __tablename__ = "global_roles"
     
-    id = Column(Integer, primary_key=True, autoincrement=True)  # ✅ Back to int
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, nullable=False, unique=True)
     role_type = Column(Enum(GlobalRoleType), nullable=False)
 
