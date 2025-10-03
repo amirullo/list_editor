@@ -1,25 +1,18 @@
-import uuid
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from .base import BaseModel
 
 class List(BaseModel):
     __tablename__ = "lists"
     
-    id = Column(Integer, autoincrement=True, primary_key=True)
-    name = Column(String(255), nullable=False)
-    description = Column(String(1000))
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
+    # Relationships
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
-    
-# class Item(BaseModel):
-#     __tablename__ = "items"
-#
-#     item_id = Column(Integer, autoincrement=True, primary_key=True)
-#     list_id = Column(Integer, ForeignKey("lists.id"), nullable=False)
-#     name = Column(String(255), nullable=False)
-#     category = Column(String(255), nullable=True)
-#     quantity = Column(Integer, nullable=False, default=1)
-#     price = Column(Float, nullable=True)
-#
-#     list = relationship("List", back_populates="items")
+    list_users = relationship("ListUser", back_populates="list", cascade="all, delete-orphan")
+    locks = relationship("Lock", back_populates="list", cascade="all, delete-orphan")

@@ -1,13 +1,24 @@
-from typing import Optional, Any, Generic, TypeVar
-from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, Field, ConfigDict
+from typing import TypeVar, Generic, Optional
 
 T = TypeVar('T')
 
+
+class ResponseModel(BaseModel, Generic[T]):
+    status: str = Field("success", description="Response status")
+    data: Optional[T] = Field(None, description="Response data")
+    message: Optional[str] = Field(None, description="Optional message")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "success",
+                "data": "some_payload",
+                "message": "Operation successful"
+            }
+        }
+    )
+
+
 class StatusMessage(BaseModel):
     message: str
-
-class Response(GenericModel, Generic[T]):
-    status: str = "success"
-    message: str = "Operation successful"
-    data: Optional[T] = None

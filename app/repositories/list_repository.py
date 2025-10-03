@@ -1,30 +1,65 @@
 from typing import List as TypeList, Optional, Dict, Any
-from sqlalchemy.orm import Session
 from app.models.list_model import List
 from app.models.item_model import Item
+from app.models.list_user_model import ListUser
 from .base_repository import BaseRepository
+from sqlalchemy.orm import Session
+from app.utils.uuid_generator import generate_uuid
+
 
 class ListRepository(BaseRepository[List]):
     def __init__(self, db: Session):
         super().__init__(List, db)
-        
-    def create_with_items(self, list_data: Dict[str, Any], items_data: TypeList[Dict[str, Any]]) -> List:
+
+    def create_with_items(self, list_data: Dict[str, Any], creator_id: str, items_data: TypeList[Dict[str, Any]] = None) -> List:
+        """Create list with optional items"""
         # Create the list
-        db_list = self.create(list_data)
-        
-        # Create items associated with the list
-        for item_data in items_data:
-            item_data["list_id"] = db_list.id
-            db_item = Item(**item_data)
-            self.db.add(db_item)
-        
+        # list_data['id'] = generate_uuid()
+        list_data['name'] = ''
+        db_list = List(**list_data)
+        self.db.add(db_list)
+        self.db.flush()  # Get the ID
+
+        # Add items if provided
+        if items_data:
+            for item_data in items_data:
+                item_data['id'] = generate_uuid()
+                item_data['list_id'] = db_list.id
+                db_item = Item(**item_data)
+                self.db.add(db_item)
+
         self.db.commit()
         self.db.refresh(db_list)
         return db_list
 
-# class ItemRepository(BaseRepository[Item]):
-#     def __init__(self, db: Session):
-#         super().__init__(Item, db)
-#
-#     def get_items_by_list(self, list_id: int) -> TypeList[Item]:
-#         return self.db.query(Item).filter(Item.list_id == list_id).all()
+    def get_user_lists(self, user_internal_id: int) -> TypeList[List]:
+        """Get all lists user has access to"""
+        result = self.db.query(List).join(ListUser).filter(ListUser.user_internal_id == user_internal_id).all()
+        return result
+
+    def get_list_by_id_and_user(self, list_id: int, user_internal_id: int) -> Optional[List]:
+        return self.db.query(List).join(ListUser).filter(
+            List.id == list_id,
+            ListUser.user_internal_id == user_internal_id
+        ).first()
+
+    def get_list_by_id_and_creator(self, list_id: int, creator_id: int) -> Optional[List]:
+        return self.db.query(List).filter(
+            List.id == list_id,
+            List.creator_id == creator_id
+        ).first()
+
+    def update(self, list_id: int, list_update: Dict[str, Any]) -> List:
+        db_list = self.db.query(List).filter(
+            List.id == list_id
+        ).first()
+        if not db_list:
+            return None
+        
+        for key, value in list_update.items():
+            if hasattr(db_list, key):
+                setattr(db_list, key, value)
+        
+        self.db.commit()
+        self.db.refresh(db_list)
+        return db_list

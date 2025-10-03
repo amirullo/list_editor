@@ -9,8 +9,12 @@ def setup_logger():
     os.makedirs(logs_dir, exist_ok=True)
 
     # Create a logger
-    logger = logging.getLogger()
+    logger = logging.getLogger('list_editor')
     logger.setLevel(logging.DEBUG)
+
+    # Prevent duplicate handlers
+    if logger.handlers:
+        return logger
 
     # Create formatter
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s:%(funcName)s - %(message)s')

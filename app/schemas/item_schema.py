@@ -3,27 +3,24 @@ from typing import Optional
 from datetime import datetime
 
 class ItemBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    category: Optional[str] = Field(None, max_length=100)
+    price: Optional[float] = Field(None, gt=0)
 
 class ItemCreate(ItemBase):
-    category: Optional[str] = None
-    quantity: Optional[int] = None
-    price: Optional[float] = None
+    pass
 
-class ItemUpdate(ItemBase):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    quantity: Optional[int] = None
-    price: Optional[float] = None
+class ItemUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    category: Optional[str] = Field(None, max_length=100)
+    price: Optional[float] = Field(None, gt=0)
 
 class ItemInDB(ItemBase):
-    item_id: int
+    id: int
     list_id: int
-    name: str
     created_at: datetime
     updated_at: datetime
-    category: Optional[str] = None
-    quantity: Optional[int] = None
-    price: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
