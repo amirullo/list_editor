@@ -6,7 +6,7 @@ from app.models.global_role_model import GlobalRoleType
 from app.models.list_role_model import ListRoleType
 from app.services.global_role_service import GlobalRoleService
 from app.services.list_role_service import ListRoleService
-from app.services.list_service import ListService
+# from app.services.list_service import ListService
 from app.services.item_service import ItemService
 from app.services.lock_service import LockService
 from app.repositories.global_role_repository import GlobalRoleRepository
@@ -33,7 +33,7 @@ def get_current_user_id(
     Gets the external user_id from the header, finds the user in the DB,
     and returns their internal integer ID.
     """
-    user = user_repo.get_by_user_id(external_user_id)
+    user = user_repo.get_by_id(external_user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found or not authorized")
     return user.id
@@ -70,11 +70,12 @@ def get_lock_service(db: Session = Depends(get_db)) -> LockService:
     """Dependency to get lock service"""
     return LockService(db)
 
-async def get_list_service(db: Session = Depends(get_db)) -> ListService:
+async def get_list_service(db: Session = Depends(get_db)) -> "ListService":
     # Import only what we know exists and works
     from app.repositories.list_repository import ListRepository
     from app.repositories.user_repository import UserRepository
     from app.repositories.list_user_repository import ListUserRepository
+    from app.services.list_service import ListService
     
     # Create repositories
     list_repository = ListRepository(db)

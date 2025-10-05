@@ -6,7 +6,7 @@ class ListUser(BaseModel):
     __tablename__ = "list_users"
     
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    user_internal_id = Column(String, ForeignKey("global_roles.user_id"), nullable=False)
+    user_internal_id = Column(String, ForeignKey("global_roles.id"), nullable=False)
     list_id = Column(Integer, ForeignKey("lists.id"), nullable=False)
     role_id = Column(Integer, ForeignKey("list_roles.id"), nullable=False)
 
@@ -15,5 +15,5 @@ class ListUser(BaseModel):
 
     # Relationships
     user = relationship("GlobalRole", back_populates="list_users")
-    list = relationship("List", back_populates="list_users")
-    role = relationship("ListRole", back_populates="list_users")
+    # list = relationship("List", back_populates="list_users")
+    role = relationship("ListRole")

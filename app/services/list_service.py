@@ -17,6 +17,8 @@ from app.schemas.item_schema import ItemCreate
 from app.core.exceptions import NotFoundException, LockException, ForbiddenException, PermissionException
 from app.services.notification_service import NotificationService
 from app.utils.logger import logger
+# from app.api.dependencies import get_current_user_id
+
 
 class ListService:
     def __init__(
@@ -37,13 +39,14 @@ class ListService:
         self.list_role_service = list_role_service
         self.item_service = item_service  # Initialize item_service
 
-    def create_list(self, list_create: ListCreate, user_internal_id: int, items: Optional[TypeList[ItemCreate]] = None) -> ListInDB:
+    def create_list(self, list_create: ListCreate, user_external_id: str, items: Optional[TypeList[ItemCreate]] = None) -> ListInDB:
         """Create a new list and assign creator role to the user"""
         
-        # Ensure user exists
-        self.user_repository.create_if_not_exists(str(user_internal_id))
+        # Ensure user exists and get their internal ID
+        user = self.user_repository.create_if_not_exists(user_external_id)
+        user_internal_id = user.id
         
-        # Prepare list data (no creator_id needed)
+        # Prepare list data
         list_data = list_create.model_dump(exclude_unset=True)
         
         # Create the list
@@ -54,7 +57,7 @@ class ListService:
         
         # Create ListUser entry with CREATOR role for the user
         self.list_user_repository.create(
-            user_id=str(user_internal_id),
+            user_internal_id=user_internal_id,
             list_id=new_list.id,
             role_type=ListRoleType.CREATOR
         )
@@ -68,12 +71,12 @@ class ListService:
         
         # Get all users with access to this list, which now includes the creator.
         list_users = self.list_user_repository.get_users_by_list_id(new_list.id)
-        user_id_list = [int(lu.user_id) for lu in list_users]
+        user_id_list = [lu.user_internal_id for lu in list_users]
         
         # The creator is the user who initiated this request.
         creator_id = user_internal_id
         
-        # Ensure creator is in the user_id_list
+        # Ensure creator is in the user_id_list (it should be, but this is a safeguard)
         if creator_id not in user_id_list:
             user_id_list.append(creator_id)
         
@@ -102,13 +105,13 @@ class ListService:
         if not self.list_user_repository.user_has_access(user_internal_id, list_id):
             raise ForbiddenException("You don't have access to this list")
         
-        db_list = self.list_repository.get_list_by_id_and_user(list_id, user_internal_id)
+        db_list = self.list_repository.get_list_by_id(list_id, user_internal_id)
         if not db_list:
             raise NotFoundException("List not found")
         db_list.user_id_list = []
         for user in db_list.list_users:
             db_list.user_id_list.append(user.user_internal_id)
-            if user.role_id == ListRoleType.CREATOR.value:
+            if user.role.role_type == ListRoleType.CREATOR:
                 db_list.creator_id = user.user_internal_id
         
         return ListInDB.model_validate(db_list)

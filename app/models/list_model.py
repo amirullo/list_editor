@@ -14,5 +14,5 @@ class List(BaseModel):
     
     # Relationships
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
-    list_users = relationship("ListUser", back_populates="list", cascade="all, delete-orphan")
+    list_users = relationship("ListUser", cascade="all, delete-orphan")
     locks = relationship("Lock", back_populates="list", cascade="all, delete-orphan")

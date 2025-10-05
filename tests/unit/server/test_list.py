@@ -75,7 +75,7 @@ def list_service(
 
 class TestListService:
 
-    def test_get_list_success_integration(
+    def test_create_list_repo_level_integration(
         self,
         test_db,
         mock_global_role_service: MagicMock,
@@ -99,11 +99,9 @@ class TestListService:
 
         client_external_id = "client_user"
         worker_external_id = "creator_user"
-        # user_external_id = "test_user_id3"
         list_name = "Test List2"
 
         # Create data in the test database
-        # creator = user_repo.create_if_not_exists(creator_external_id, role_type=GlobalRoleType.CLIENT)
         user_client = user_repo.create_if_not_exists(client_external_id, role_type=GlobalRoleType.CLIENT)
         user_worker = user_repo.create_if_not_exists(worker_external_id, role_type=GlobalRoleType.WORKER)
 
@@ -123,5 +121,53 @@ class TestListService:
         assert result.creator_id == user_client.id
         assert user_client.id in result.user_id_list
         assert user_worker.id in result.user_id_list
+
+    def test_create_list_service_level_integration(
+        self,
+        test_db,
+        mock_global_role_service: MagicMock,
+        mock_list_role_service: MagicMock,
+        mock_item_service: MagicMock
+    ):
+        # Arrange
+        list_repo = ListRepository(db=test_db)
+        list_user_repo = ListUserRepository(db=test_db)
+        user_repo = UserRepository(db=test_db)
+
+        list_service = ListService(
+            db=test_db,
+            list_repository=list_repo,
+            list_user_repository=list_user_repo,
+            user_repository=user_repo,
+            global_role_service=mock_global_role_service,
+            list_role_service=mock_list_role_service,
+            item_service=mock_item_service,
+        )
+
+        list_name = "Test List3"
+        client_external_id = "client_user" # existing user CLIENT
+        worker_external_id = "creator_user" # existing user WORKER
+        external_id_list = [client_external_id, worker_external_id]
+
+        # Act
+        results = []
+        for external_id in external_id_list:
+            user = user_repo.create_if_not_exists(external_id)
+            list_create_data = ListCreate(name=list_name)
+            create_result = list_service.create_list(list_create=list_create_data,
+                                                     user_external_id=external_id
+                                                     )
+            get_result = list_service.get_list(list_id=create_result.id,
+                                               user_internal_id=user.id
+                                               )
+            results.append((user, create_result, get_result))
+
+        # Assert
+        for user, create_result, get_result in results:
+            assert isinstance(create_result, ListInDB)
+            assert create_result.id == get_result.id
+            assert get_result.name == list_name
+            assert get_result.creator_id == user.id
+            assert user.id in get_result.user_id_list
 
 

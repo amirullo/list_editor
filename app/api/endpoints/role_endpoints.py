@@ -22,7 +22,7 @@ async def create_global_role(
     current_user_id: str = Depends(get_user_id)
 ):
     try:
-        created_role = global_role_service.create_role(current_user_id, role.role_type)
+        created_role = global_role_service.create_role(role.user_id, role.role)
         return ResponseModel(data=created_role, message="Global role created successfully")
     except PermissionException as pe:
         raise HTTPException(status_code=403, detail=str(pe))

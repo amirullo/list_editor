@@ -33,11 +33,12 @@ router = APIRouter()
 async def create_list(
     request: CreateListRequest,
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id),
-    _: None = Depends(require_global_role(GlobalRoleType.CLIENT))
+    user_id: str = Depends(get_user_id)
 ):
     try:
-        new_list = list_service.create_list(request.list_create, user_id, request.items)
+        new_list = list_service.create_list(request.list_create,
+                                            user_id,
+                                            request.items)
         return ResponseModel(data=new_list, message="List created successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))

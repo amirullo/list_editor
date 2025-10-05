@@ -2,6 +2,7 @@ from typing import List as TypeList, Optional, Dict, Any
 from app.models.list_model import List
 from app.models.item_model import Item
 from app.models.list_user_model import ListUser
+from app.models.list_role_model import ListRole, ListRoleType
 from .base_repository import BaseRepository
 from sqlalchemy.orm import Session
 from app.utils.uuid_generator import generate_uuid
@@ -37,11 +38,15 @@ class ListRepository(BaseRepository[List]):
         result = self.db.query(List).join(ListUser).filter(ListUser.user_internal_id == user_internal_id).all()
         return result
 
-    def get_list_by_id_and_user(self, list_id: int, user_internal_id: int) -> Optional[List]:
-        return self.db.query(List).join(ListUser).filter(
-            List.id == list_id,
-            ListUser.user_internal_id == user_internal_id
+    def get_list_by_id(self, list_id: int, user_internal_id: int) -> Optional[List]:
+        # res = self.db.query(List).join(ListUser).filter(
+        #     List.id == list_id,
+        #     ListUser.user_internal_id == user_internal_id
+        # ).first()
+        res = self.db.query(List).filter(
+            List.id == list_id
         ).first()
+        return res
 
     def get_list_by_id_and_creator(self, list_id: int, creator_id: int) -> Optional[List]:
         return self.db.query(List).filter(
