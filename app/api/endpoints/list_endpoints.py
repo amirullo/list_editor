@@ -14,11 +14,13 @@ from app.api.dependencies import (
     get_current_user_id,
     require_global_role,
     require_list_access,
-    require_list_creator
+    require_list_creator,
+    get_user_repository
 )
 from app.core.exceptions import NotFoundException, LockException, ForbiddenException, BaseAPIException
 from app.models.global_role_model import GlobalRoleType
 from pydantic import BaseModel
+from app.repositories.user_repository import UserRepository
 
 # Add this new request model at the top of the file
 class CreateListRequest(BaseModel):
@@ -112,27 +114,36 @@ async def add_user_to_list(
     list_id: int,
     user_data: ListAddUser,
     list_service: ListService = Depends(get_list_service),
+    user_repo: UserRepository = Depends(get_user_repository),
     user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        updated_list = list_service.add_user_to_list(list_id, user_data.user_id_to_add, user_internal_id)
+        user_to_add = user_repo.get_by_external_id(user_data.user_id_to_add)
+        if not user_to_add:
+            raise NotFoundException(f"User with external ID {user_data.user_id_to_add} not found")
+        
+        updated_list = list_service.add_user_to_list(list_id, user_to_add.id, user_internal_id)
         return ResponseModel(data=updated_list, message="User added to list successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.delete("/{list_id}/users/{user_to_remove_id}", response_model=ResponseModel[ListInDB])
+@router.delete("/{list_id}/users/{user_to_remove_external_id}", response_model=ResponseModel[ListInDB])
 async def remove_user_from_list(
     list_id: int,
-    user_to_remove_id: int,
+    user_to_remove_external_id: str,
     list_service: ListService = Depends(get_list_service),
+    user_repo: UserRepository = Depends(get_user_repository),
     user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        updated_list = list_service.remove_user_from_list(list_id, user_to_remove_id, user_internal_id)
+        user_to_remove = user_repo.get_by_external_id(user_to_remove_external_id)
+        if not user_to_remove:
+            raise NotFoundException(f"User with external ID {user_to_remove_external_id} not found")
+        updated_list = list_service.remove_user_from_list(list_id, user_to_remove.id, user_internal_id)
         return ResponseModel(data=updated_list, message="User removed from list successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))

@@ -177,7 +177,9 @@ list_editor/
 │   │   └── endpoints/          # API route definitions
 │   │       ├── __init__.py
 │   │       ├── list_endpoints.py
-│   │       └── role_endpoints.py
+│   │       ├── user_endpoints.py
+│   │       ├── role_endpoints.py
+│   │       └── sync_endpoints.py
 │   │
 │   ├── core/                   # Core configuration and setup
 │   │   ├── __init__.py
@@ -190,20 +192,24 @@ list_editor/
 │   │   ├── base.py             # Base model with common fields
 │   │   ├── list_model.py       # List entity model
 │   │   ├── item_model.py       # Item entity model
-│   │   ├── role_model.py       # Role entity model
-│   │   └── notification_model.py
+│   │   ├── user_model.py       # User entity model
+│   │   ├── lock_model.py       # Lock entity model
+│   │   ├── global_role_model.py # Global Role entity model
+│   │   └── list_role_model.py  # List Role entity model
 │   │
 │   ├── repositories/           # Data access layer
 │   │   ├── __init__.py
 │   │   ├── base_repository.py  # Generic repository pattern
 │   │   ├── list_repository.py  # List-specific data operations
 │   │   ├── item_repository.py  # Item-specific data operations
+│   │   ├── user_repository.py  # User-specific data operations
 │   │   └── role_repository.py  # Role-specific data operations
 │   │
 │   ├── schemas/                # Pydantic schemas for validation
 │   │   ├── __init__.py
 │   │   ├── list_schema.py      # List request/response schemas
 │   │   ├── item_schema.py      # Item request/response schemas
+│   │   ├── user_schema.py      # User request/response schemas
 │   │   ├── role_schema.py      # Role request/response schemas
 │   │   └── response_schema.py  # Generic response schemas
 │   │
@@ -237,7 +243,7 @@ list_editor/
 
 ### User Management
 - `POST /api/lists/{list_id}/users` - Add user to list by their external ID (creator only).
-- `DELETE /api/lists/{list_id}/users/{user_id}` - Remove user from list by their internal ID (creator only).
+- `DELETE /api/lists/{list_id}/users/{user_to_remove_external_id}` - Remove user from list by their external ID (creator only).
 
 ### Item Management
 - `POST /api/lists/{list_id}/items` - Create new item in list
@@ -250,11 +256,13 @@ list_editor/
 - `DELETE /api/lists/{list_id}/lock` - Release lock on list
 
 ### Synchronization
-- `GET /api/sync/{list_id}` - Manual synchronization endpoint
+- `POST /api/lists/{list_id}/sync` - Manual synchronization endpoint
+- `GET /api/sync/notifications` - Get notifications for changes
 
 ### Role Management
 - `POST /api/roles/global` - Create a new global role for a user.
-- `GET /api/roles/global/{user_id}` - Get the global role for a user.
+- `GET /api/roles/global/{user_internal_id}` - Get the global role for a user.
+- `GET /api/roles/list/{list_id}/{user_internal_id}` - Get the list role for a user.
 
 ## Data Models
 
@@ -274,7 +282,8 @@ list_editor/
 - name: String (required)
 - description: Text (optional)
 - quantity: Integer (default: 1)
-- completed: Boolean (default: false)
+- price: Float (optional)
+- category: String (optional)
 - list_id: Foreign key to List
 
 ### ListUser (Association)
@@ -286,6 +295,17 @@ list_editor/
 - id: Integer primary key
 - list_id: Foreign key to List
 - holder_id: Foreign key to User (internal ID)
+
+### GlobalRole
+- id: Integer primary key
+- user_id: Foreign key to User (internal ID)
+- role_type: Enum (CLIENT, WORKER)
+
+### ListRole
+- id: Integer primary key
+- role_type: Enum (CREATOR, USER)
+- description: String (optional)
+
 
 ## Error Handling
    The API returns structured error responses:

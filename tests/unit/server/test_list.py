@@ -9,6 +9,8 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.global_role_repository import GlobalRoleRepository
 from app.services.global_role_service import GlobalRoleService
 from app.core.db import SessionLocal
+from app.services.list_role_service import ListRoleService
+
 
 @pytest.fixture(scope="function")
 def test_db():
@@ -18,9 +20,11 @@ def test_db():
     finally:
         db.close()
 
+
 class TestListService:
 
-    def test_get_list_integration(
+    @pytest.mark.asyncio
+    async def test_get_list_integration(
         self,
         test_db
     ):
@@ -30,6 +34,7 @@ class TestListService:
         user_repo = UserRepository(db=test_db)
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        list_role_service = ListRoleService(list_user_repo=list_user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -37,7 +42,7 @@ class TestListService:
             list_user_repository=list_user_repo,
             user_repository=user_repo,
             global_role_service=global_role_service,
-            list_role_service=None, # Not used in this test
+            list_role_service=list_role_service,
             item_service=None, # Not used in this test
         )
 
@@ -68,6 +73,12 @@ class TestListService:
         assert result.creator_id == user_client.id
         assert user_client.id in result.user_id_list
         assert user_worker.id in result.user_id_list
+        assert await list_role_service.is_user_list_creator(user_id=user_client.id, list_id=list_id)
+        assert not await list_role_service.is_user_list_creator(user_id=user_worker.id, list_id=list_id)
+        assert await list_role_service.user_has_access_to_list(user_id=user_client.id, list_id=list_id)
+        assert await list_role_service.user_has_access_to_list(user_id=user_worker.id, list_id=list_id)
+        assert list_role_service.get_user_role_in_list(user_id=user_client.id, list_id=list_id) == ListRoleType.CREATOR
+        assert list_role_service.get_user_role_in_list(user_id=user_worker.id, list_id=list_id) == ListRoleType.USER
 
     def test_create_list_service_level_integration(
         self,

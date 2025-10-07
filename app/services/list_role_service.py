@@ -8,7 +8,7 @@ class ListRoleService:
 
     def get_user_role_in_list(self, user_id: str, list_id: int) -> Optional[ListRoleType]:
         list_user = self.list_user_repo.get_by_user_and_list(user_id, list_id)
-        return list_user.role if list_user else None
+        return list_user.role_type if list_user else None
 
     async def user_has_access_to_list(self, user_id: str, list_id: int) -> bool:
         """Check if the user has any role in the list."""
