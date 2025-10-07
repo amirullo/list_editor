@@ -1,14 +1,14 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.list_role_model import ListRoleType
 from datetime import datetime
 
 class ListRoleBase(BaseModel):
-    user_id: str
+    user_internal_id: int = Field(..., alias='user_id')
     list_id: int
     role: ListRoleType
 
 class ListParticipant(BaseModel):
-    user_id: str
+    user_internal_id: int = Field(..., alias='user_id')
     role: ListRoleType
 
 class ListRoleCreate(ListRoleBase):

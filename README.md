@@ -11,7 +11,7 @@ List Editor is a collaborative list management system designed for teams and ind
 
 - **Participant-based Access Control**: Fine-grained permissions for list creators and participants
 - **Collaboration**: Concurrent editing with locking mechanisms
-- **UUID-based Authentication**: Secure, stateless authentication system
+- **User ID-based Authentication**: Secure login with internal and external user IDs.
 - **RESTful API**: Clean, well-documented API endpoints
 - **Scalable Architecture**: Modular design following clean architecture principles
 
@@ -41,7 +41,7 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Activity Tracking**: Audit trail for all list modifications
 
 #### Security & Access Control
--  **UUID Authentication**: Secure, token-free authentication
+-  **User ID Authentication**: Secure login using an external ID from the `X-User-ID` header, with all subsequent operations using an internal integer ID.
 -  **Role-based Permissions**: Creator vs. participant privilege levels
 -  **Access Validation**: Strict access control on all operations
 -  **Data Isolation**: Users only see lists they have access to
@@ -51,14 +51,12 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **RESTful API**: Clean, intuitive API design
 -  **Data Validation**: Comprehensive input validation with Pydantic
 -  **Error Handling**: Detailed error responses and logging
--  **Database Persistence**: SQLite with SQLAlchemy ORM
+-  **Database Persistence**: PostgreSQL with SQLAlchemy ORM
 -  **Automatic Timestamps**: Creation and modification tracking
 -  **CORS Support**: Cross-origin resource sharing enabled
 -  **Containerization**: Docker support for easy deployment
 
 ## Architecture
-
-### System Design
 
 The application follows a layered architecture pattern with clear separation of concerns:
 ```
@@ -126,6 +124,7 @@ The application follows a layered architecture pattern with clear separation of 
 - **pip** (Python package manager)
 - **Docker** (Optional, for containerized deployment)
 - **Git** (For cloning the repository)
+- **Postgres** (SQL data storage)
 
 ### Installation and Setup
 
@@ -147,9 +146,7 @@ The application follows a layered architecture pattern with clear separation of 
    CREATE USER dev WITH PASSWORD 'pymbep-koxzev-hokdU6';
    GRANT ALL PRIVILEGES ON DATABASE mydb TO dev;
    
-   pip install psycopg2-binary
-   pip install alembic
-   alembic upgrade head
+   psql -U dev -d mydb -f ddl_postgres.sql
    ```
    
 3.**Run the application:**
@@ -228,6 +225,9 @@ list_editor/
 
 ## API Endpoints
 
+### User Authentication
+- `POST /api/users/login` - Login with an external user ID to get an internal user ID.
+
 ### List Management
 - `POST /api/lists/` - Create a new list
 - `GET /api/lists/` - Get all lists for authenticated user
@@ -236,8 +236,8 @@ list_editor/
 - `DELETE /api/lists/{list_id}` - Delete list (creator only)
 
 ### User Management
-- `POST /api/lists/{list_id}/users` - Add user to list (creator only)
-- `DELETE /api/lists/{list_id}/users/{user_id}` - Remove user from list (creator only)
+- `POST /api/lists/{list_id}/users` - Add user to list by their external ID (creator only).
+- `DELETE /api/lists/{list_id}/users/{user_id}` - Remove user from list by their internal ID (creator only).
 
 ### Item Management
 - `POST /api/lists/{list_id}/items` - Create new item in list
@@ -253,10 +253,14 @@ list_editor/
 - `GET /api/sync/{list_id}` - Manual synchronization endpoint
 
 ### Role Management
-- `GET /api/roles/` - Get available roles
-- `POST /api/roles/assign` - Assign role to user
+- `POST /api/roles/global` - Create a new global role for a user.
+- `GET /api/roles/global/{user_id}` - Get the global role for a user.
 
 ## Data Models
+
+### User
+- id: Integer primary key (internal ID)
+- external_id: String (unique, for login)
 
 ### List
 - id: Integer primary key
@@ -274,10 +278,14 @@ list_editor/
 - list_id: Foreign key to List
 
 ### ListUser (Association)
-   - list_id: Foreign key to List
-   - user_id: UUID string
-   - role: Enum (creator, participant)
-   - joined_at: Timestamp
+- list_id: Foreign key to List
+- user_id: Foreign key to User (internal ID)
+- role_type: Enum (CREATOR, USER)
+
+### Lock
+- id: Integer primary key
+- list_id: Foreign key to List
+- holder_id: Foreign key to User (internal ID)
 
 ## Error Handling
    The API returns structured error responses:
@@ -300,16 +308,16 @@ list_editor/
 ## Roles 
 
 ### Global roles
-- CLIENT - only he can change (WORKER can't change) description of the list and can change price of the item.
-- WORKER - only he can change (CLIENT can't change) quantity of the item.
+- CLIENT - only he can change (WORKER can't change) the price of an item.
+- WORKER - only he can change (CLIENT can't change) the quantity of an item.
 
 
 ### List roles (Global role restrictions override List role privileges)
 - CREATOR - who created the list. only he can delete the list. he has full access to the list and corresponding items to the list, until he has restrictions on Global role level.
-- USER - additional users that can read everything in the list and corresponding items to the list, and modify some parts of the list: add or modify items, until he has restrictions on Global role level.
+- USER - additional users that can read everything in the list and corresponding items to the list, and can modify the list and its items, until he has restrictions on Global role level.
 
 ### Examples: 
 - CREATOR + CLIENT: Can do everything including change price, but NOT quantity
 - CREATOR + WORKER: Can do everything including change quantity, but NOT price  
-- USER + CLIENT: Can modify items including price, but NOT quantity
-- USER + WORKER: Can modify items including quantity, but NOT price
+- USER + CLIENT: Can modify the list and its items, including price, but NOT quantity
+- USER + WORKER: Can modify the list and its items, including quantity, but NOT price

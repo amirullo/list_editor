@@ -8,16 +8,13 @@ from app.schemas.list_role_schema import ListParticipant
 class ListBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
-    # user_id_list: Optional[TypeList[str]] = None
 
 class ListCreate(ListBase):
-    # user_id_list: Optional[TypeList[str]] = Field(default_factory=list)
     pass
 
 class ListUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
-    # user_id_list: Optional[TypeList[str]] = None
 
 class ListInDB(BaseModel):
     id: int
@@ -35,7 +32,7 @@ class ListWithParticipants(ListInDB):
     participants: TypeList[ListParticipant] = []
 
 class ListAddUser(BaseModel):
-    user_id: str = Field(..., min_length=1)
+    user_id_to_add: str = Field(..., min_length=1, description="External ID of the user to add")
 
 class ListRemoveUser(BaseModel):
-    user_id: str = Field(..., min_length=1)
+    user_id_to_remove: int = Field(..., description="Internal ID of the user to remove")
