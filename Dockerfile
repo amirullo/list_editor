@@ -3,6 +3,7 @@ FROM python:3.10-slim-bookworm
 # Set the working directory inside the container
 WORKDIR /app
 
+ENV DATABASE_URL="postgresql+psycopg2://dev:pymbep-koxzev-hokdU6@host.docker.internal:5432/mydb"
 
 # Copy requirements file and install Python dependencies
 COPY requirements.txt .

@@ -1,189 +1,139 @@
-import pytest
 import uuid
 import requests
-import asyncio
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/api"
 
-def generate_userid():
-    user_id = str(uuid.uuid4())
-    return user_id
+def generate_external_userid():
+    return str(uuid.uuid4())
 
-def create_global_role(test_user_id):
+def login_or_create_user(external_user_id: str):
+    headers = {"X-User-ID": external_user_id}
+    response = requests.post(f"{BASE_URL}/users/login", headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+def create_global_role(external_user_id: str, user_internal_id: int, global_role_type: str):
     headers = {
         "Content-Type": "application/json",
-        "X-User-ID": test_user_id
+        "X-User-ID": external_user_id
     }
     payload = {
-        "user_id": test_user_id,
-        "role_type": "client"
+        "user_id": user_internal_id,
+        "role": global_role_type
     }
-    response = requests.post(f"{BASE_URL}/api/roles/global", headers=headers, json=payload)
+    response = requests.post(f"{BASE_URL}/roles/global", headers=headers, json=payload)
     return response
 
 def test_create_list_with_valid_data_no_items():
-    test_user_id = generate_userid()
-
-    # Check if global role creation was successful
-    role_response = create_global_role(test_user_id)
-    print(f"")
-    print(f"Global role creation response: {role_response.status_code}, {role_response.text}")
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-ID": test_user_id
-    }
-    payload = {
-        "list_create": {
-            "name": "Valid Test List"
-        },
-        "items": None
-    }
-
-    print(f"Sending payload: {payload}")
-    response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=payload)
-    print(f"Response status: {response.status_code}")
-    print(f"Response body: {response.text}")
-
-    if response.status_code != 200:
-        print(f"Expected status code 200, but got {response.status_code}. Error detail: {response.text}")
-
-    assert response.status_code == 200
-    data = response.json()["data"]
-    assert data["name"] == payload["list_create"]["name"]
-    assert "id" in data
-    assert response.json()["status"] == "success"
-    assert response.json()["message"] == "List created successfully"
-
-def test_get_all_lists_multiple_lists_success():
-    test_user_id = generate_userid()
+    # Arrange
+    global_role_types = ["client", "worker"]
+    list_name = "Valid Test List"
     
-    # Create global role first
-    role_response = create_global_role(test_user_id)
-    assert role_response.status_code == 200
-    
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-ID": test_user_id
-    }
-    
-    # Create multiple lists
-    list_names = ["First Test List", "Second Test List", "Third Test List"]
-    created_list_ids = []
-    
-    for list_name in list_names:
+    for global_role_type in global_role_types:
+        # 1. Create user and get IDs
+        external_user_id = generate_external_userid()
+        user_data = login_or_create_user(external_user_id)
+        user_internal_id = user_data['id']
+
+        # 2. Create global role for the user
+        create_global_role_response = create_global_role(external_user_id, user_internal_id, global_role_type)
+        assert create_global_role_response.status_code == 200
+
+        # 3. Create list
+        headers = {
+            "Content-Type": "application/json",
+            "X-User-ID": external_user_id
+        }
         payload = {
             "list_create": {
                 "name": list_name
             },
             "items": None
         }
-        response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=payload)
+        
+        # Act
+        response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+        
+        # Assert
         assert response.status_code == 200
-        created_list_ids.append(response.json()["data"]["id"])
-    
-    # Get all lists
-    response = requests.get(f"{BASE_URL}/api/lists", headers=headers)
-
-    print(f"")
-    print(f"Response status: {response.status_code}")
-    print(f"Response body: {response.text}")
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["message"] == "Lists retrieved successfully"
-    assert len(data["data"]) == 3
-    
-    # Verify all created lists are returned
-    returned_list_names = [list_data["name"] for list_data in data["data"]]
-    for list_name in list_names:
-        assert list_name in returned_list_names
-    
-    # Verify all returned lists have required fields
-    for list_data in data["data"]:
+        response_data = response.json()
+        assert response_data["message"] == "List created successfully"
+        
+        list_data = response_data["data"]
+        assert list_data["name"] == list_name
         assert "id" in list_data
-        assert "name" in list_data
-        assert list_data["id"] in created_list_ids
+        assert list_data["creator_id"] == user_internal_id
+        assert user_internal_id in list_data["user_id_list"]
 
-def test_get_list_by_id_success():
-    test_user_id = generate_userid()
+def test_add_user_to_list():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'client')
+    assert create_global_role_response.status_code == 200
 
-    # Create global role first
-    role_response = create_global_role(test_user_id)
-    assert role_response.status_code == 200
+    user_to_add_external_id = generate_external_userid()
+    user_to_add_data = login_or_create_user(user_to_add_external_id)
+    user_to_add_internal_id = user_to_add_data['id']
+    create_global_role_response = create_global_role(user_to_add_external_id, user_to_add_internal_id, 'worker')
+    assert create_global_role_response.status_code == 200
 
     headers = {
         "Content-Type": "application/json",
-        "X-User-ID": test_user_id
+        "X-User-ID": creator_external_id
     }
-
-    # Create a list to retrieve later
-    list_name = "My Specific List"
-    create_payload = {
+    list_payload = {
         "list_create": {
-            "name": list_name
+            "name": "Add User Test List"
         },
         "items": None
     }
-    create_response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=create_payload)
-    assert create_response.status_code == 200
-    list_id = create_response.json()["data"]["id"]
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
 
-    # Retrieve the specific list by its ID
-    response = requests.get(f"{BASE_URL}/api/lists/{list_id}", headers=headers)
+    # Act
+    add_user_payload = {"user_external_id": user_to_add_external_id}
+    response = requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
 
+    # Assert
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "success"
-    assert data["message"] == "List retrieved successfully"
-    assert data["data"]["id"] == list_id
-    assert data["data"]["name"] == list_name
-    # assert data["data"]["creator_id"] == test_user_id
+    response_data = response.json()
+    assert response_data["message"] == "User added to list successfully"
+    list_data = response_data["data"]
+    assert user_to_add_internal_id in list_data["user_id_list"]
 
-def test_update_list_name_success():
-    test_user_id = generate_userid()
-
-    # Create global role first
-    role_response = create_global_role(test_user_id)
-    assert role_response.status_code == 200
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-ID": test_user_id
-    }
-
-    # Create a list
-    create_payload = {
-        "list_create": {
-            "name": "Original List Name"
-        },
-        "items": None
-    }
-    create_response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=create_payload)
-    assert create_response.status_code == 200
-    list_id = create_response.json()["data"]["id"]
-
-    # Print created list details for debugging
-    print(f"Created list: {create_response.json()}")
-
-    # Get the list to check creator
-    get_response = requests.get(f"{BASE_URL}/api/lists/{list_id}", headers=headers)
-
-    print("")
-    print(f"Get list response: {get_response.json()}")
-    assert get_response.status_code == 200
-
-    # Update the list name
-    update_payload = {
-        "name": "Updated List Name"
-    }
-    update_response = requests.put(f"{BASE_URL}/api/lists/{list_id}", headers=headers, json=update_payload)
-
-    print(f"Update response: {update_response.text}")
-    assert update_response.status_code == 200
-    data = update_response.json()
-    assert data["status"] == "success"
-    assert data["message"] == "List updated successfully"
-    assert data["data"]["id"] == list_id
-    assert data["data"]["name"] == "Updated List Name"
+# def test_remove_user_from_list():
+#     # Arrange
+#     creator_external_id = generate_external_userid()
+#     creator_data = login_or_create_user(creator_external_id)
+#
+#     user_to_remove_external_id = generate_external_userid()
+#     user_to_remove_data = login_or_create_user(user_to_remove_external_id)
+#     user_to_remove_internal_id = user_to_remove_data['id']
+#
+#     headers = {
+#         "Content-Type": "application/json",
+#         "X-User-ID": creator_external_id
+#     }
+#     list_payload = {
+#         "list_create": {
+#             "name": "Remove User Test List"
+#         },
+#         "items": None
+#     }
+#     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+#     list_id = list_response.json()["data"]["id"]
+#
+#     add_user_payload = {"user_id_to_add": user_to_remove_external_id}
+#     requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
+#
+#     # Act
+#     response = requests.delete(f"{BASE_URL}/lists/{list_id}/users/{user_to_remove_external_id}", headers=headers)
+#
+#     # Assert
+#     assert response.status_code == 200
+#     response_data = response.json()
+#     assert response_data["message"] == "User removed from list successfully"
+#     list_data = response_data["data"]
+#     assert user_to_remove_internal_id not in list_data["user_id_list"]

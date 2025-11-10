@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .base import BaseModel
@@ -12,7 +12,6 @@ class List(BaseModel):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    # Relationships
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
     list_users = relationship("ListUser", back_populates="list", cascade="all, delete-orphan")
-    locks = relationship("Lock", back_populates="list", cascade="all, delete-orphan")
+    lock = relationship("Lock", uselist=False, back_populates="list", cascade="all, delete-orphan")

@@ -9,28 +9,28 @@ class NotificationService:
     def __init__(self):
         self.notifications = []  # In-memory storage for demo
     
-    def send_notification(self, user_id: str, message: str, notification_type: str = "info") -> Dict[str, Any]:
+    def send_notification(self, user_internal_id: int, message: str, notification_type: str = "info") -> Dict[str, Any]:
         """Send notification to user"""
         notification = {
             "id": len(self.notifications) + 1,
-            "user_id": user_id,
+            "user_internal_id": user_internal_id,
             "message": message,
             "type": notification_type,
             "timestamp": "2024-01-01T00:00:00Z",  # Should use datetime.utcnow()
             "read": False
         }
         self.notifications.append(notification)
-        logger.info(f"Notification sent to user {user_id}: {message}")
+        logger.info(f"Notification sent to user {user_internal_id}: {message}")
         return notification
     
-    def get_user_notifications(self, user_id: str) -> List[Dict[str, Any]]:
+    def get_user_notifications(self, user_internal_id: int) -> List[Dict[str, Any]]:
         """Get all notifications for a user"""
-        return [n for n in self.notifications if n["user_id"] == user_id]
+        return [n for n in self.notifications if n["user_internal_id"] == user_internal_id]
     
-    def mark_as_read(self, notification_id: int, user_id: str) -> bool:
+    def mark_as_read(self, notification_id: int, user_internal_id: int) -> bool:
         """Mark notification as read"""
         for notification in self.notifications:
-            if notification["id"] == notification_id and notification["user_id"] == user_id:
+            if notification["id"] == notification_id and notification["user_internal_id"] == user_internal_id:
                 notification["read"] = True
                 return True
         return False

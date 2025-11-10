@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/notifications", response_model=TypeList[str])
 def get_notifications(
     notification_service: NotificationService = Depends(),
-    user_id: int = Depends(get_current_user_id)
+    user_internal_id: int = Depends(get_current_user_id)
 ):
     """
     Get notifications for changes
@@ -22,12 +22,12 @@ def get_notifications(
 @router.post("/lists/{list_id}/sync", response_model=ResponseModel[ListInDB])
 def sync_list(
     list_id: int, 
-    user_id: int = Depends(get_current_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     list_service: ListService = Depends(get_list_service)
 ):
     """Manual synchronization endpoint as mentioned in README"""
     # Get the latest version of the list
-    updated_list = list_service.get_list(list_id, user_id)
+    updated_list = list_service.get_list(list_id, user_internal_id)
     return ResponseModel(
         success=True,
         message="List synchronized successfully",
