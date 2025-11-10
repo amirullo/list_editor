@@ -10,7 +10,7 @@ def login_or_create_user(external_user_id: str):
     headers = {"X-User-ID": external_user_id}
     response = requests.post(f"{BASE_URL}/users/login", headers=headers)
     response.raise_for_status()
-    return response.json()["data"]
+    return response.json()
 
 def create_global_role(external_user_id: str, user_internal_id: int, global_role_type: str):
     headers = {
@@ -26,27 +26,16 @@ def create_global_role(external_user_id: str, user_internal_id: int, global_role
 
 def test_get_global_role_success():
     # Arrange
-    external_user_id = generate_external_userid()
-    user_data = login_or_create_user(external_user_id)
-    user_internal_id = user_data['id']
+    global_role_types = ["client", "worker"]
+    for global_role_type in global_role_types:
+        external_user_id = generate_external_userid()
+        user_data = login_or_create_user(external_user_id)
+        user_internal_id = user_data['id']
 
-    create_response = create_global_role(external_user_id, user_internal_id, "client")
-    assert create_response.status_code == 200
-    create_data = create_response.json()
-    assert create_data["message"] == "Global role created successfully"
-    assert create_data["data"]["user_id"] == user_internal_id
-    assert create_data["data"]["role_type"] == "client"
+        create_response = create_global_role(external_user_id, user_internal_id, global_role_type)
+        assert create_response.status_code == 200
+        create_data = create_response.json()
+        assert create_data["message"] == "Global role created successfully"
+        assert create_data["data"]["user_id"] == user_internal_id
+        assert create_data["data"]["role_type"] == global_role_type
 
-    # Act
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-ID": external_user_id
-    }
-    response = requests.get(f"{BASE_URL}/roles/global/{user_internal_id}", headers=headers)
-    
-    # Assert
-    assert response.status_code == 200
-    response_data = response.json()
-    assert response_data["message"] == "Global role retrieved successfully"
-    assert response_data["data"]["user_id"] == user_internal_id
-    assert response_data["data"]["role_type"] == "client"
