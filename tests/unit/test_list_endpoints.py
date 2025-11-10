@@ -124,7 +124,8 @@ def test_remove_user_from_list():
     requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
 
     # Act
-    response = requests.delete(f"{BASE_URL}/lists/{list_id}/users/{user_to_remove_external_id}", headers=headers)
+    remove_user_payload = {"user_external_id": user_to_remove_external_id}
+    response = requests.delete(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=remove_user_payload)
 
     # Assert
     assert response.status_code == 200

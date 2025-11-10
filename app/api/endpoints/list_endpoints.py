@@ -131,19 +131,19 @@ async def add_user_to_list(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.delete("/{list_id}/users/{user_to_remove_external_id}", response_model=ResponseModel[ListInDB])
+@router.delete("/{list_id}/users", response_model=ResponseModel[ListInDB])
 async def remove_user_from_list(
     list_id: int,
-    user_to_remove_external_id: str,
+    user_data: ListRemoveUser,
     list_service: ListService = Depends(get_list_service),
     user_repo: UserRepository = Depends(get_user_repository),
     user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        user_to_remove = user_repo.get_by_external_id(user_to_remove_external_id)
+        user_to_remove = user_repo.get_by_external_id(user_data.user_external_id)
         if not user_to_remove:
-            raise NotFoundException(f"User with external ID {user_to_remove_external_id} not found")
+            raise NotFoundException(f"User with external ID {user_data.user_external_id} not found")
         updated_list = list_service.remove_user_from_list(list_id, user_to_remove.id, user_internal_id)
         return ResponseModel(data=updated_list, message="User removed from list successfully")
     except BaseAPIException as e:
