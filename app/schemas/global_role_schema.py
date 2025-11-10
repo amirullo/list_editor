@@ -3,7 +3,7 @@ from app.models.global_role_model import GlobalRoleType
 from datetime import datetime
 
 class GlobalRoleBase(BaseModel):
-    user_id: str
+    user_internal_id: int = Field(..., alias='user_id')
     role: GlobalRoleType = Field(..., alias='role_type')
 
     model_config = ConfigDict(

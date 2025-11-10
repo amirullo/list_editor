@@ -24,3 +24,7 @@ class PermissionException(BaseAPIException):
     """Exception raised when user lacks required permissions"""
     def __init__(self, message: str = "Insufficient permissions"):
         super().__init__(message, 403)
+
+class ConflictException(BaseAPIException):
+    def __init__(self, message: str = "A conflict occurred"):
+        super().__init__(message, 409)

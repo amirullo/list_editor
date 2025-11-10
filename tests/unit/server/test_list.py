@@ -1,109 +1,61 @@
 
 import pytest
-from unittest.mock import MagicMock
 from app.services.list_service import ListService
 from app.schemas.list_schema import ListCreate, ListInDB
-from app.models.list_model import List
-from app.models.global_role_model import GlobalRoleType
-from app.models.list_role_model import ListRole, ListRoleType
-from app.models.list_user_model import ListUser
+from app.models.list_role_model import ListRoleType
 from app.repositories.list_repository import ListRepository
 from app.repositories.list_user_repository import ListUserRepository
 from app.repositories.user_repository import UserRepository
-from app.core.db import SessionLocal, engine, Base
-# from app.models import user_model, list_model, list_user_model, list_role_model, global_role_model, item_model, lock_model
+from app.repositories.global_role_repository import GlobalRoleRepository
+from app.services.global_role_service import GlobalRoleService
+from app.core.db import SessionLocal
+from app.services.list_role_service import ListRoleService
 
 
 @pytest.fixture(scope="function")
 def test_db():
-    # Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-        # Base.metadata.drop_all(bind=engine)
 
-
-@pytest.fixture
-def mock_db_session() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def mock_list_repo() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def mock_list_user_repo() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def mock_user_repo() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def mock_global_role_service() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def mock_list_role_service() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def mock_item_service() -> MagicMock:
-    return MagicMock()
-
-@pytest.fixture
-def list_service(
-    mock_db_session: MagicMock,
-    mock_list_repo: MagicMock,
-    mock_list_user_repo: MagicMock,
-    mock_user_repo: MagicMock,
-    mock_global_role_service: MagicMock,
-    mock_list_role_service: MagicMock,
-    mock_item_service: MagicMock,
-) -> ListService:
-    return ListService(
-        db=mock_db_session,
-        list_repository=mock_list_repo,
-        list_user_repository=mock_list_user_repo,
-        user_repository=mock_user_repo,
-        global_role_service=mock_global_role_service,
-        list_role_service=mock_list_role_service,
-        item_service=mock_item_service,
-    )
 
 class TestListService:
 
-    def test_create_list_repo_level_integration(
+    @pytest.mark.asyncio
+    async def test_get_list_integration(
         self,
-        test_db,
-        mock_global_role_service: MagicMock,
-        mock_list_role_service: MagicMock,
-        mock_item_service: MagicMock
+        test_db
     ):
         # Arrange
         list_repo = ListRepository(db=test_db)
         list_user_repo = ListUserRepository(db=test_db)
         user_repo = UserRepository(db=test_db)
+        global_role_repo = GlobalRoleRepository(db=test_db)
+        global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo)
 
         list_service = ListService(
             db=test_db,
             list_repository=list_repo,
             list_user_repository=list_user_repo,
             user_repository=user_repo,
-            global_role_service=mock_global_role_service,
-            list_role_service=mock_list_role_service,
-            item_service=mock_item_service,
+            global_role_service=global_role_service,
+            list_role_service=list_role_service,
+            item_service=None, # Not used in this test
         )
 
-        client_external_id = "client_user"
-        worker_external_id = "creator_user"
-        list_name = "Test List2"
+        client_external_id = "client_user_get"
+        worker_external_id = "worker_user_get"
+        list_name = "Test Get List"
 
         # Create data in the test database
-        user_client = user_repo.create_if_not_exists(client_external_id, role_type=GlobalRoleType.CLIENT)
-        user_worker = user_repo.create_if_not_exists(worker_external_id, role_type=GlobalRoleType.WORKER)
+        user_client = user_repo.get_or_create_by_external_id(client_external_id)
+        user_worker = user_repo.get_or_create_by_external_id(worker_external_id)
+
+        global_role_service.assign_client_role(user_client.id)
+        global_role_service.assign_worker_role(user_worker.id)
 
         created_list = list_repo.create({"name": list_name})
         list_id = created_list.id
@@ -121,53 +73,98 @@ class TestListService:
         assert result.creator_id == user_client.id
         assert user_client.id in result.user_id_list
         assert user_worker.id in result.user_id_list
+        assert list_role_service.is_user_list_creator(user_id=user_client.id, list_id=list_id)
+        assert list_role_service.user_has_access_to_list(user_id=user_client.id, list_id=list_id)
+        assert list_role_service.user_has_access_to_list(user_id=user_worker.id, list_id=list_id)
+        assert list_role_service.get_user_role_in_list(user_id=user_client.id, list_id=list_id) == ListRoleType.CREATOR
+        assert list_role_service.get_user_role_in_list(user_id=user_worker.id, list_id=list_id) == ListRoleType.USER
 
     def test_create_list_service_level_integration(
         self,
-        test_db,
-        mock_global_role_service: MagicMock,
-        mock_list_role_service: MagicMock,
-        mock_item_service: MagicMock
+        test_db
     ):
         # Arrange
         list_repo = ListRepository(db=test_db)
         list_user_repo = ListUserRepository(db=test_db)
         user_repo = UserRepository(db=test_db)
+        global_role_repo = GlobalRoleRepository(db=test_db)
+        global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
 
         list_service = ListService(
             db=test_db,
             list_repository=list_repo,
             list_user_repository=list_user_repo,
             user_repository=user_repo,
-            global_role_service=mock_global_role_service,
-            list_role_service=mock_list_role_service,
-            item_service=mock_item_service,
+            global_role_service=global_role_service,
+            list_role_service=None, # Not used in this test
+            item_service=None, # Not used in this test
         )
 
-        list_name = "Test List3"
-        client_external_id = "client_user" # existing user CLIENT
-        worker_external_id = "creator_user" # existing user WORKER
-        external_id_list = [client_external_id, worker_external_id]
+        list_name = "Test Create List Service"
+        external_id = "creator_user_create"
 
         # Act
-        results = []
-        for external_id in external_id_list:
-            user = user_repo.create_if_not_exists(external_id)
-            list_create_data = ListCreate(name=list_name)
-            create_result = list_service.create_list(list_create=list_create_data,
-                                                     user_external_id=external_id
-                                                     )
-            get_result = list_service.get_list(list_id=create_result.id,
-                                               user_internal_id=user.id
-                                               )
-            results.append((user, create_result, get_result))
+        user = user_repo.get_or_create_by_external_id(external_id)
+        global_role_service.assign_client_role(user.id)
+        list_create_data = ListCreate(name=list_name)
+        create_result = list_service.create_list(list_create=list_create_data,
+                                                 user_internal_id=user.id
+                                                 )
+        get_result = list_service.get_list(list_id=create_result.id,
+                                           user_internal_id=user.id
+                                           )
 
         # Assert
-        for user, create_result, get_result in results:
-            assert isinstance(create_result, ListInDB)
-            assert create_result.id == get_result.id
-            assert get_result.name == list_name
-            assert get_result.creator_id == user.id
-            assert user.id in get_result.user_id_list
+        assert isinstance(create_result, ListInDB)
+        assert create_result.id == get_result.id
+        assert get_result.name == list_name
+        assert get_result.creator_id == user.id
+        assert user.id in get_result.user_id_list
 
+    def test_adding_user_to_list_service_level_integration(
+        self,
+        test_db
+    ):
+        # Arrange
+        list_repo = ListRepository(db=test_db)
+        list_user_repo = ListUserRepository(db=test_db)
+        user_repo = UserRepository(db=test_db)
+        global_role_repo = GlobalRoleRepository(db=test_db)
+        global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo)
 
+        list_service = ListService(
+            db=test_db,
+            list_repository=list_repo,
+            list_user_repository=list_user_repo,
+            user_repository=user_repo,
+            global_role_service=global_role_service,
+            list_role_service=list_role_service,
+            item_service=None, # Not used in this test
+        )
+
+        list_name = "Test Add User To List"
+        creator_external_id = "creator_for_add_user_test"
+        user_to_add_external_id = "user_to_add_test"
+
+        # Create users
+        creator = user_repo.get_or_create_by_external_id(creator_external_id)
+        user_to_add = user_repo.get_or_create_by_external_id(user_to_add_external_id)
+
+        # Create list
+        list_create_data = ListCreate(name=list_name)
+        created_list = list_service.create_list(list_create=list_create_data,
+                                                 user_internal_id=creator.id
+                                                 )
+
+        # Act
+        updated_list = list_service.add_user_to_list(list_id=created_list.id,
+                                                     user_internal_id_to_add=user_to_add.id,
+                                                     requester_internal_id=creator.id
+                                                     )
+
+        # Assert
+        assert isinstance(updated_list, ListInDB)
+        assert created_list.id == updated_list.id
+        assert user_to_add.id in updated_list.user_id_list
+        assert creator.id in updated_list.user_id_list

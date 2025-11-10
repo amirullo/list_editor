@@ -1,42 +1,48 @@
-import pytest
 import uuid
 import requests
-import asyncio
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8000/api"
 
-def generate_userid():
-    user_id = str(uuid.uuid4())
-    return user_id
+def generate_external_userid():
+    return str(uuid.uuid4())
 
-def create_global_role(test_user_id, global_role_type):
+def login_or_create_user(external_user_id: str):
+    headers = {"X-User-ID": external_user_id}
+    response = requests.post(f"{BASE_URL}/users/login", headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+def create_global_role(external_user_id: str, user_internal_id: int, global_role_type: str):
     headers = {
         "Content-Type": "application/json",
-        "X-User-ID": test_user_id
+        "X-User-ID": external_user_id
     }
     payload = {
-        "user_id": test_user_id,
+        "user_id": user_internal_id,
         "role": global_role_type
     }
-    response = requests.post(f"{BASE_URL}/api/roles/global", headers=headers, json=payload)
-
+    response = requests.post(f"{BASE_URL}/roles/global", headers=headers, json=payload)
     return response
 
 def test_create_list_with_valid_data_no_items():
-
-    # Act
+    # Arrange
     global_role_types = ["client", "worker"]
     list_name = "Valid Test List"
-    responses = []
+    
     for global_role_type in global_role_types:
-        test_user_id = generate_userid()
+        # 1. Create user and get IDs
+        external_user_id = generate_external_userid()
+        user_data = login_or_create_user(external_user_id)
+        user_internal_id = user_data['id']
 
-        # Check if global role creation was successful
-        create_global_role(test_user_id, global_role_type)
+        # 2. Create global role for the user
+        create_global_role_response = create_global_role(external_user_id, user_internal_id, global_role_type)
+        assert create_global_role_response.status_code == 200
 
+        # 3. Create list
         headers = {
             "Content-Type": "application/json",
-            "X-User-ID": test_user_id
+            "X-User-ID": external_user_id
         }
         payload = {
             "list_create": {
@@ -44,15 +50,90 @@ def test_create_list_with_valid_data_no_items():
             },
             "items": None
         }
-        response = requests.post(f"{BASE_URL}/api/lists", headers=headers, json=payload)
-        responses.append(response)
+        
+        # Act
+        response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+        
+        # Assert
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["message"] == "List created successfully"
+        
+        list_data = response_data["data"]
+        assert list_data["name"] == list_name
+        assert "id" in list_data
+        assert list_data["creator_id"] == user_internal_id
+        assert user_internal_id in list_data["user_id_list"]
+
+def test_add_user_to_list():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'client')
+    assert create_global_role_response.status_code == 200
+
+    user_to_add_external_id = generate_external_userid()
+    user_to_add_data = login_or_create_user(user_to_add_external_id)
+    user_to_add_internal_id = user_to_add_data['id']
+    create_global_role_response = create_global_role(user_to_add_external_id, user_to_add_internal_id, 'worker')
+    assert create_global_role_response.status_code == 200
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": creator_external_id
+    }
+    list_payload = {
+        "list_create": {
+            "name": "Add User Test List"
+        },
+        "items": None
+    }
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    # Act
+    add_user_payload = {"user_external_id": user_to_add_external_id}
+    response = requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
 
     # Assert
-    for response in responses:
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert data["name"] == list_name
-        assert "id" in data
-        assert response.json()["status"] == "success"
-        assert response.json()["message"] == "List created successfully"
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["message"] == "User added to list successfully"
+    list_data = response_data["data"]
+    assert user_to_add_internal_id in list_data["user_id_list"]
 
+# def test_remove_user_from_list():
+#     # Arrange
+#     creator_external_id = generate_external_userid()
+#     creator_data = login_or_create_user(creator_external_id)
+#
+#     user_to_remove_external_id = generate_external_userid()
+#     user_to_remove_data = login_or_create_user(user_to_remove_external_id)
+#     user_to_remove_internal_id = user_to_remove_data['id']
+#
+#     headers = {
+#         "Content-Type": "application/json",
+#         "X-User-ID": creator_external_id
+#     }
+#     list_payload = {
+#         "list_create": {
+#             "name": "Remove User Test List"
+#         },
+#         "items": None
+#     }
+#     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+#     list_id = list_response.json()["data"]["id"]
+#
+#     add_user_payload = {"user_id_to_add": user_to_remove_external_id}
+#     requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
+#
+#     # Act
+#     response = requests.delete(f"{BASE_URL}/lists/{list_id}/users/{user_to_remove_external_id}", headers=headers)
+#
+#     # Assert
+#     assert response.status_code == 200
+#     response_data = response.json()
+#     assert response_data["message"] == "User removed from list successfully"
+#     list_data = response_data["data"]
+#     assert user_to_remove_internal_id not in list_data["user_id_list"]

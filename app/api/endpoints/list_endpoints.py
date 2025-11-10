@@ -11,14 +11,17 @@ from app.api.dependencies import (
     get_list_service,
     get_item_service,
     get_lock_service,
-    get_user_id,
+    get_current_user_id,
     require_global_role,
     require_list_access,
-    require_list_creator
+    require_list_creator,
+    get_user_repository
 )
 from app.core.exceptions import NotFoundException, LockException, ForbiddenException, BaseAPIException
 from app.models.global_role_model import GlobalRoleType
 from pydantic import BaseModel
+from app.repositories.user_repository import UserRepository
+from app.utils.logger import logger
 
 # Add this new request model at the top of the file
 class CreateListRequest(BaseModel):
@@ -33,11 +36,11 @@ router = APIRouter()
 async def create_list(
     request: CreateListRequest,
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id)
+    user_internal_id: int = Depends(get_current_user_id)
 ):
     try:
         new_list = list_service.create_list(request.list_create,
-                                            user_id,
+                                            user_internal_id,
                                             request.items)
         return ResponseModel(data=new_list, message="List created successfully")
     except BaseAPIException as e:
@@ -48,10 +51,10 @@ async def create_list(
 @router.get("/", response_model=ResponseModel[TypeList[ListInDB]])
 def get_all_lists(
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id)
+    user_internal_id: int = Depends(get_current_user_id)
 ):
     try:
-        lists = list_service.get_all_lists(user_id)
+        lists = list_service.get_all_lists(user_internal_id)
         return ResponseModel(data=lists, message="Lists retrieved successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -62,11 +65,11 @@ def get_all_lists(
 async def get_list(
     list_id: int,
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        db_list = list_service.get_list(list_id, user_id)
+        db_list = list_service.get_list(list_id, user_internal_id)
         return ResponseModel(data=db_list, message="List retrieved successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -78,11 +81,11 @@ async def update_list(
     list_id: int,
     list_update: ListUpdate,
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id),
-    _: None = Depends(require_list_creator)
+    user_internal_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_list_access)
 ):
     try:
-        updated_list = list_service.update_list(list_id, list_update, user_id)
+        updated_list = list_service.update_list(list_id, list_update, user_internal_id)
         return ResponseModel(data=updated_list, message="List updated successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -93,10 +96,10 @@ async def update_list(
 async def delete_list(
     list_id: int,
     list_service: ListService = Depends(get_list_service),
-    current_user_id: str = Depends(get_user_id)
+    user_internal_id: int = Depends(get_current_user_id)
 ):
     try:
-        result = list_service.delete_list(list_id, current_user_id)
+        result = list_service.delete_list(list_id, user_internal_id)
         return ResponseModel(data=result, message="List deleted successfully")
     except ForbiddenException as fe:
         raise HTTPException(status_code=403, detail=str(fe))
@@ -112,27 +115,36 @@ async def add_user_to_list(
     list_id: int,
     user_data: ListAddUser,
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id),
+    user_repo: UserRepository = Depends(get_user_repository),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        updated_list = list_service.add_user_to_list(list_id, user_data.user_id_to_add, user_id)
+        user_to_add = user_repo.get_by_external_id(user_data.user_external_id)
+        if not user_to_add:
+            raise NotFoundException(f"User with external ID {user_data.user_external_id} not found")
+        
+        updated_list = list_service.add_user_to_list(list_id, user_to_add.id, user_internal_id)
         return ResponseModel(data=updated_list, message="User added to list successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.delete("/{list_id}/users/{user_id_to_remove}", response_model=ResponseModel[ListInDB])
+@router.delete("/{list_id}/users/{user_to_remove_external_id}", response_model=ResponseModel[ListInDB])
 async def remove_user_from_list(
     list_id: int,
-    user_id_to_remove: str,
+    user_to_remove_external_id: str,
     list_service: ListService = Depends(get_list_service),
-    user_id: str = Depends(get_user_id),
+    user_repo: UserRepository = Depends(get_user_repository),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        updated_list = list_service.remove_user_from_list(list_id, user_id_to_remove, user_id)
+        user_to_remove = user_repo.get_by_external_id(user_to_remove_external_id)
+        if not user_to_remove:
+            raise NotFoundException(f"User with external ID {user_to_remove_external_id} not found")
+        updated_list = list_service.remove_user_from_list(list_id, user_to_remove.id, user_internal_id)
         return ResponseModel(data=updated_list, message="User removed from list successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -146,11 +158,11 @@ async def create_item(
     list_id: int,
     item_create: ItemCreate,
     item_service: ItemService = Depends(get_item_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        item = item_service.create_item(list_id, item_create, user_id)
+        item = item_service.create_item(list_id, item_create, user_internal_id)
         return ResponseModel(data=item, message="Item created successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -161,11 +173,11 @@ async def create_item(
 async def get_items(
     list_id: int,
     item_service: ItemService = Depends(get_item_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        items = item_service.get_items_by_list_id(list_id, user_id)
+        items = item_service.get_items_by_list_id(list_id, user_internal_id)
         return ResponseModel(data=items, message="Items retrieved successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -178,11 +190,11 @@ async def update_item(
     item_id: int,
     item_update: ItemUpdate,
     item_service: ItemService = Depends(get_item_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        item = item_service.update_item(list_id, item_id, item_update, user_id)
+        item = item_service.update_item(list_id, item_id, item_update, user_internal_id)
         return ResponseModel(data=item, message="Item updated successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -194,11 +206,11 @@ async def delete_item(
     list_id: int,
     item_id: int,
     item_service: ItemService = Depends(get_item_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        item_service.delete_item(list_id, item_id, user_id)
+        item_service.delete_item(list_id, item_id, user_internal_id)
         return ResponseModel(data={"status": "success"}, message="Item deleted successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -211,11 +223,11 @@ async def delete_item(
 async def acquire_lock(
     list_id: int,
     lock_service: LockService = Depends(get_lock_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        lock = lock_service.acquire_lock(list_id, user_id)
+        lock = lock_service.acquire_lock(list_id, user_internal_id)
         return ResponseModel(data={"status": "success", "lock": lock}, message="Lock acquired successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
@@ -226,11 +238,11 @@ async def acquire_lock(
 async def release_lock(
     list_id: int,
     lock_service: LockService = Depends(get_lock_service),
-    user_id: str = Depends(get_user_id),
+    user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
     try:
-        result = lock_service.release_lock(list_id, user_id)
+        result = lock_service.release_lock(list_id, user_internal_id)
         return ResponseModel(data=result, message="Lock released successfully")
     except BaseAPIException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
