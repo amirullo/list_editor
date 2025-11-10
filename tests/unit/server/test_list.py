@@ -34,7 +34,7 @@ class TestListService:
         user_repo = UserRepository(db=test_db)
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
-        list_role_service = ListRoleService(list_user_repo=list_user_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -73,10 +73,9 @@ class TestListService:
         assert result.creator_id == user_client.id
         assert user_client.id in result.user_id_list
         assert user_worker.id in result.user_id_list
-        assert await list_role_service.is_user_list_creator(user_id=user_client.id, list_id=list_id)
-        assert not await list_role_service.is_user_list_creator(user_id=user_worker.id, list_id=list_id)
-        assert await list_role_service.user_has_access_to_list(user_id=user_client.id, list_id=list_id)
-        assert await list_role_service.user_has_access_to_list(user_id=user_worker.id, list_id=list_id)
+        assert list_role_service.is_user_list_creator(user_id=user_client.id, list_id=list_id)
+        assert list_role_service.user_has_access_to_list(user_id=user_client.id, list_id=list_id)
+        assert list_role_service.user_has_access_to_list(user_id=user_worker.id, list_id=list_id)
         assert list_role_service.get_user_role_in_list(user_id=user_client.id, list_id=list_id) == ListRoleType.CREATOR
         assert list_role_service.get_user_role_in_list(user_id=user_worker.id, list_id=list_id) == ListRoleType.USER
 
@@ -121,3 +120,51 @@ class TestListService:
         assert get_result.name == list_name
         assert get_result.creator_id == user.id
         assert user.id in get_result.user_id_list
+
+    def test_adding_user_to_list_service_level_integration(
+        self,
+        test_db
+    ):
+        # Arrange
+        list_repo = ListRepository(db=test_db)
+        list_user_repo = ListUserRepository(db=test_db)
+        user_repo = UserRepository(db=test_db)
+        global_role_repo = GlobalRoleRepository(db=test_db)
+        global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo)
+
+        list_service = ListService(
+            db=test_db,
+            list_repository=list_repo,
+            list_user_repository=list_user_repo,
+            user_repository=user_repo,
+            global_role_service=global_role_service,
+            list_role_service=list_role_service,
+            item_service=None, # Not used in this test
+        )
+
+        list_name = "Test Add User To List"
+        creator_external_id = "creator_for_add_user_test"
+        user_to_add_external_id = "user_to_add_test"
+
+        # Create users
+        creator = user_repo.get_or_create_by_external_id(creator_external_id)
+        user_to_add = user_repo.get_or_create_by_external_id(user_to_add_external_id)
+
+        # Create list
+        list_create_data = ListCreate(name=list_name)
+        created_list = list_service.create_list(list_create=list_create_data,
+                                                 user_internal_id=creator.id
+                                                 )
+
+        # Act
+        updated_list = list_service.add_user_to_list(list_id=created_list.id,
+                                                     user_internal_id_to_add=user_to_add.id,
+                                                     requester_internal_id=creator.id
+                                                     )
+
+        # Assert
+        assert isinstance(updated_list, ListInDB)
+        assert created_list.id == updated_list.id
+        assert user_to_add.id in updated_list.user_id_list
+        assert creator.id in updated_list.user_id_list

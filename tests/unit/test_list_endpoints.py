@@ -70,10 +70,14 @@ def test_add_user_to_list():
     creator_external_id = generate_external_userid()
     creator_data = login_or_create_user(creator_external_id)
     creator_internal_id = creator_data['id']
+    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'client')
+    assert create_global_role_response.status_code == 200
 
     user_to_add_external_id = generate_external_userid()
     user_to_add_data = login_or_create_user(user_to_add_external_id)
     user_to_add_internal_id = user_to_add_data['id']
+    create_global_role_response = create_global_role(user_to_add_external_id, user_to_add_internal_id, 'worker')
+    assert create_global_role_response.status_code == 200
 
     headers = {
         "Content-Type": "application/json",
@@ -89,7 +93,7 @@ def test_add_user_to_list():
     list_id = list_response.json()["data"]["id"]
 
     # Act
-    add_user_payload = {"user_id_to_add": user_to_add_external_id}
+    add_user_payload = {"user_external_id": user_to_add_external_id}
     response = requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
 
     # Assert

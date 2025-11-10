@@ -9,7 +9,7 @@ from app.models.list_role_model import ListRoleType
 from app.models.global_role_model import GlobalRoleType
 from app.schemas.list_schema import ListCreate, ListUpdate, ListInDB
 from app.schemas.item_schema import ItemCreate
-from app.core.exceptions import NotFoundException, LockException, ForbiddenException, PermissionException
+from app.core.exceptions import NotFoundException, LockException, ForbiddenException, PermissionException, ConflictException
 from app.utils.logger import logger
 
 
@@ -77,17 +77,29 @@ class ListService:
     def get_list(self, list_id: int, user_internal_id: int) -> ListInDB:
         if not self.list_user_repository.user_has_access(user_internal_id, list_id):
             raise ForbiddenException("You don't have access to this list")
-        
+
         db_list = self.list_repository.get_list_by_id(list_id, user_internal_id)
         if not db_list:
             raise NotFoundException("List not found")
-        db_list.user_id_list = []
+
+        user_id_list = [user.user_id for user in db_list.list_users]
+        creator_id = None
         for user in db_list.list_users:
-            db_list.user_id_list.append(user.user_id)
             if user.role_type == ListRoleType.CREATOR:
-                db_list.creator_id = user.user_id
+                creator_id = user.user_id
+                break
         
-        return ListInDB.model_validate(db_list)
+        response_data = {
+            'id': db_list.id,
+            'name': db_list.name,
+            'creator_id': creator_id,
+            'user_id_list': user_id_list,
+            'created_at': db_list.created_at,
+            'updated_at': db_list.updated_at,
+            'items': db_list.items
+        }
+        
+        return ListInDB.model_validate(response_data)
 
     def update_list(self, list_id: int, list_update: ListUpdate, user_internal_id: int) -> ListInDB:
         if not self.list_user_repository.user_has_access(user_internal_id, list_id):
@@ -123,26 +135,23 @@ class ListService:
         logger.info(f"Deleted list {list_id} by creator {user_internal_id}")
         return {"message": "List deleted successfully", "list_id": str(list_id)}
 
-    def add_user_to_list(self, list_id: int, user_external_id_to_add: str, requester_internal_id: int) -> ListInDB:
+    def add_user_to_list(self, list_id: int, user_internal_id_to_add: int, requester_internal_id: int) -> ListInDB:
         if not self.list_user_repository.user_has_role(requester_internal_id, list_id, ListRoleType.CREATOR):
             raise ForbiddenException("Only the creator can add users to this list")
-        
+
         db_list = self.list_repository.get_by_id(list_id)
         if not db_list:
             raise NotFoundException("List not found")
-        
-        user_to_add = self.user_repository.get_or_create_by_external_id(user_external_id_to_add)
-        user_internal_id_to_add = user_to_add.id
-        
+
         if self.list_user_repository.user_has_access(user_internal_id_to_add, list_id):
-            raise ValueError("User is already in this list")
-        
+            raise ConflictException("User is already in this list")
+
         self.list_user_repository.create(
             user_internal_id=user_internal_id_to_add,
             list_id=list_id,
             role_type=ListRoleType.USER
         )
-        
+
         logger.info(f"Added user {user_internal_id_to_add} to list {list_id} by {requester_internal_id}")
         return self.get_list(list_id, requester_internal_id)
 

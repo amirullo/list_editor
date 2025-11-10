@@ -1,3 +1,4 @@
+
 from typing import List as TypeList, Optional, Dict, Any
 from app.models.list_model import List
 from app.models.list_user_model import ListUser
@@ -7,6 +8,9 @@ from sqlalchemy.orm import Session
 class ListRepository(BaseRepository[List]):
     def __init__(self, db: Session):
         super().__init__(List, db)
+
+    def get_by_id(self, list_id: int) -> Optional[List]:
+        return self.db.query(List).filter(List.id == list_id).first()
 
     def get_user_lists(self, user_internal_id: int) -> TypeList[List]:
         """Get all lists user has access to"""

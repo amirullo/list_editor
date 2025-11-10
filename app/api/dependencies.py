@@ -1,3 +1,4 @@
+
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 from app.core.db import get_db
@@ -57,18 +58,6 @@ def get_list_role_service(
 def get_lock_service(db: Session = Depends(get_db)) -> LockService:
     return LockService(db)
 
-async def get_list_service(db: Session = Depends(get_db)) -> "ListService":
-    from app.services.list_service import ListService
-    return ListService(
-        db=db,
-        list_repository=get_list_repository(db),
-        user_repository=get_user_repository(db),
-        list_user_repository=get_list_user_repository(db),
-        global_role_service=get_global_role_service(get_global_role_repository(db)),
-        list_role_service=get_list_role_service(get_list_user_repository(db)),
-        item_service=get_item_service(db, get_item_repository(db), get_list_repository(db), get_global_role_service(get_global_role_repository(db)), get_list_role_service(get_list_user_repository(db)))
-    )
-
 def get_item_service(
     db: Session = Depends(get_db),
     item_repo: ItemRepository = Depends(get_item_repository),
@@ -82,6 +71,26 @@ def get_item_service(
         list_repository=list_repo,
         global_role_service=global_role_service,
         list_role_service=list_role_service
+    )
+
+def get_list_service(
+    db: Session = Depends(get_db),
+    list_repo: ListRepository = Depends(get_list_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
+    list_user_repo: ListUserRepository = Depends(get_list_user_repository),
+    global_role_service: GlobalRoleService = Depends(get_global_role_service),
+    list_role_service: ListRoleService = Depends(get_list_role_service),
+    item_service: ItemService = Depends(get_item_service)
+) -> "ListService":
+    from app.services.list_service import ListService
+    return ListService(
+        db=db,
+        list_repository=list_repo,
+        user_repository=user_repo,
+        list_user_repository=list_user_repo,
+        global_role_service=global_role_service,
+        list_role_service=list_role_service,
+        item_service=item_service
     )
 
 def get_user_global_role(
@@ -113,20 +122,20 @@ def require_global_role(required_role: GlobalRoleType):
         return user_role
     return _require_role
 
-async def require_list_access(
+def require_list_access(
     list_id: int,
     user_internal_id: int = Depends(get_current_user_id),
     list_role_service: ListRoleService = Depends(get_list_role_service)
 ) -> None:
-    has_access = await list_role_service.user_has_access_to_list(user_internal_id, list_id)
+    has_access = list_role_service.user_has_access_to_list(user_internal_id, list_id)
     if not has_access:
         raise HTTPException(status_code=403, detail="Access denied to this list")
 
-async def require_list_creator(
+def require_list_creator(
     list_id: int,
     user_internal_id: int = Depends(get_current_user_id),
     list_role_service: ListRoleService = Depends(get_list_role_service)
 ) -> None:
-    is_creator = await list_role_service.is_user_list_creator(user_internal_id, list_id)
+    is_creator = list_role_service.is_user_list_creator(user_internal_id, list_id)
     if not is_creator:
         raise HTTPException(status_code=403, detail="Only list creator can perform this action")

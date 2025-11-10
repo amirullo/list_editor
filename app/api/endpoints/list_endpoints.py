@@ -21,6 +21,7 @@ from app.core.exceptions import NotFoundException, LockException, ForbiddenExcep
 from app.models.global_role_model import GlobalRoleType
 from pydantic import BaseModel
 from app.repositories.user_repository import UserRepository
+from app.utils.logger import logger
 
 # Add this new request model at the top of the file
 class CreateListRequest(BaseModel):
@@ -119,9 +120,9 @@ async def add_user_to_list(
     _: None = Depends(require_list_creator)
 ):
     try:
-        user_to_add = user_repo.get_by_external_id(user_data.user_id_to_add)
+        user_to_add = user_repo.get_by_external_id(user_data.user_external_id)
         if not user_to_add:
-            raise NotFoundException(f"User with external ID {user_data.user_id_to_add} not found")
+            raise NotFoundException(f"User with external ID {user_data.user_external_id} not found")
         
         updated_list = list_service.add_user_to_list(list_id, user_to_add.id, user_internal_id)
         return ResponseModel(data=updated_list, message="User added to list successfully")
