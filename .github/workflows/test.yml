@@ -16,7 +16,7 @@ jobs:
         env:
           POSTGRES_USER: dev
           POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
+          POSTGRES_DB: mydb
         ports:
           - 5432:5432
         options: >-
@@ -44,7 +44,7 @@ jobs:
 
       - name: Run DDL SQL script
         run: |
-          psql -h localhost -U dev -d test_db -f ddl_postgres.sql
+          psql -h localhost -U dev -d mydb -f ddl_postgres.sql
         env:
           PGPASSWORD: test_password
 
@@ -55,6 +55,6 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+psycopg2://dev:test_password@localhost:5432/test_db
+          DATABASE_URL: postgresql+psycopg2://dev:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
         run: |
           pytest -v

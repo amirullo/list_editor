@@ -6,7 +6,6 @@ class Settings(BaseSettings):
     APP_NAME: str = "List Editor"
     DATABASE_URL: str
 
-
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
