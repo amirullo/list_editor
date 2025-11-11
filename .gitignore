@@ -196,4 +196,4 @@ cython_debug/
 logs/
 .idea
 /.Rhistory
-/.env
+./.env
