@@ -168,3 +168,57 @@ class TestListService:
         assert created_list.id == updated_list.id
         assert user_to_add.id in updated_list.user_id_list
         assert creator.id in updated_list.user_id_list
+
+    def test_removing_user_from_list_service_level_integration(
+        self,
+        test_db
+    ):
+        # Arrange
+        list_repo = ListRepository(db=test_db)
+        list_user_repo = ListUserRepository(db=test_db)
+        user_repo = UserRepository(db=test_db)
+        global_role_repo = GlobalRoleRepository(db=test_db)
+        global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo)
+
+        list_service = ListService(
+            db=test_db,
+            list_repository=list_repo,
+            list_user_repository=list_user_repo,
+            user_repository=user_repo,
+            global_role_service=global_role_service,
+            list_role_service=list_role_service,
+            item_service=None, # Not used in this test
+        )
+
+        list_name = "Test Remove User From List"
+        creator_external_id = "creator_for_remove_user_test"
+        user_to_remove_external_id = "user_to_remove_test"
+
+        # Create users
+        creator = user_repo.get_or_create_by_external_id(creator_external_id)
+        user_to_remove = user_repo.get_or_create_by_external_id(user_to_remove_external_id)
+
+        # Create list
+        list_create_data = ListCreate(name=list_name)
+        created_list = list_service.create_list(list_create=list_create_data,
+                                                 user_internal_id=creator.id
+                                                 )
+        
+        # Add user to the list first
+        list_service.add_user_to_list(list_id=created_list.id,
+                                      user_internal_id_to_add=user_to_remove.id,
+                                      requester_internal_id=creator.id
+                                      )
+
+        # Act
+        updated_list = list_service.remove_user_from_list(list_id=created_list.id,
+                                                          user_internal_id_to_remove=user_to_remove.id,
+                                                          requester_internal_id=creator.id
+                                                          )
+
+        # Assert
+        assert isinstance(updated_list, ListInDB)
+        assert created_list.id == updated_list.id
+        assert user_to_remove.id not in updated_list.user_id_list
+        assert creator.id in updated_list.user_id_list

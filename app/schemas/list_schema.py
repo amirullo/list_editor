@@ -35,4 +35,4 @@ class ListAddUser(BaseModel):
     user_external_id: str = Field(..., min_length=1, description="External ID of the user to add")
 
 class ListRemoveUser(BaseModel):
-    user_id_to_remove: int = Field(..., description="Internal ID of the user to remove")
+    user_external_id: str = Field(..., min_length=1, description="External ID of the user to remove")

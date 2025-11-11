@@ -103,37 +103,136 @@ def test_add_user_to_list():
     list_data = response_data["data"]
     assert user_to_add_internal_id in list_data["user_id_list"]
 
-# def test_remove_user_from_list():
-#     # Arrange
-#     creator_external_id = generate_external_userid()
-#     creator_data = login_or_create_user(creator_external_id)
-#
-#     user_to_remove_external_id = generate_external_userid()
-#     user_to_remove_data = login_or_create_user(user_to_remove_external_id)
-#     user_to_remove_internal_id = user_to_remove_data['id']
-#
-#     headers = {
-#         "Content-Type": "application/json",
-#         "X-User-ID": creator_external_id
-#     }
-#     list_payload = {
-#         "list_create": {
-#             "name": "Remove User Test List"
-#         },
-#         "items": None
-#     }
-#     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
-#     list_id = list_response.json()["data"]["id"]
-#
-#     add_user_payload = {"user_id_to_add": user_to_remove_external_id}
-#     requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
-#
-#     # Act
-#     response = requests.delete(f"{BASE_URL}/lists/{list_id}/users/{user_to_remove_external_id}", headers=headers)
-#
-#     # Assert
-#     assert response.status_code == 200
-#     response_data = response.json()
-#     assert response_data["message"] == "User removed from list successfully"
-#     list_data = response_data["data"]
-#     assert user_to_remove_internal_id not in list_data["user_id_list"]
+def test_remove_user_from_list():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    user_to_remove_external_id = generate_external_userid()
+    user_to_remove_data = login_or_create_user(user_to_remove_external_id)
+    user_to_remove_internal_id = user_to_remove_data['id']
+    create_global_role(user_to_remove_external_id, user_to_remove_internal_id, 'worker')
+
+    headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    add_user_payload = {"user_external_id": user_to_remove_external_id}
+    requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
+
+    # Act
+    remove_user_payload = {"user_external_id": user_to_remove_external_id}
+    response = requests.delete(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=remove_user_payload)
+
+    # Assert
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["message"] == "User removed from list successfully"
+    list_data = response_data["data"]
+    assert user_to_remove_internal_id not in list_data["user_id_list"]
+
+def test_remove_user_from_list_not_found():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    user_to_remove_external_id = generate_external_userid()
+    user_to_remove_data = login_or_create_user(user_to_remove_external_id)
+    user_to_remove_internal_id = user_to_remove_data['id']
+    create_global_role(user_to_remove_external_id, user_to_remove_internal_id, 'worker')
+
+    headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    # Act
+    # Attempt to remove a user who was never added to the list
+    remove_user_payload = {"user_external_id": user_to_remove_external_id}
+    response = requests.delete(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=remove_user_payload)
+
+    # Assert
+    assert response.status_code == 404
+    response_data = response.json()
+    assert response_data["detail"] == 'User not found in this list'
+
+def test_remove_user_from_list_unauthorized():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    user_to_remove_external_id = generate_external_userid()
+    user_to_remove_data = login_or_create_user(user_to_remove_external_id)
+    user_to_remove_internal_id = user_to_remove_data['id']
+    create_global_role(user_to_remove_external_id, user_to_remove_internal_id, 'worker')
+
+    # Create an unauthorized user who is not the creator
+    unauthorized_external_id = generate_external_userid()
+    unauthorized_user_data = login_or_create_user(unauthorized_external_id)
+    unauthorized_internal_id = unauthorized_user_data['id']
+    create_global_role(unauthorized_external_id, unauthorized_internal_id, 'client')
+
+
+    headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    add_user_payload = {"user_external_id": user_to_remove_external_id}
+    requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
+
+    # Act
+    # Attempt to remove a user with an unauthorized user ID
+    unauthorized_headers = {"Content-Type": "application/json", "X-User-ID": unauthorized_external_id}
+    remove_user_payload = {"user_external_id": user_to_remove_external_id}
+    response = requests.delete(f"{BASE_URL}/lists/{list_id}/users", headers=unauthorized_headers, json=remove_user_payload)
+
+    # Assert
+    assert response.status_code == 403
+    response_data = response.json()
+    assert response_data["detail"] == "Only list creator can perform this action"
+
+def test_remove_creator_from_list_unauthorized():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    user_to_remove_external_id = generate_external_userid()
+    user_to_remove_data = login_or_create_user(user_to_remove_external_id)
+    user_to_remove_internal_id = user_to_remove_data['id']
+    create_global_role(user_to_remove_external_id, user_to_remove_internal_id, 'worker')
+
+    # Create an unauthorized user who is not the creator
+    unauthorized_external_id = generate_external_userid()
+    unauthorized_user_data = login_or_create_user(unauthorized_external_id)
+    unauthorized_internal_id = unauthorized_user_data['id']
+    create_global_role(unauthorized_external_id, unauthorized_internal_id, 'client')
+
+
+    headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    add_user_payload = {"user_external_id": user_to_remove_external_id}
+    requests.post(f"{BASE_URL}/lists/{list_id}/users", headers=headers, json=add_user_payload)
+
+    # Act
+    # Attempt to remove a user with an unauthorized user ID
+    unauthorized_headers = {"Content-Type": "application/json", "X-User-ID": unauthorized_external_id}
+    remove_user_payload = {"user_external_id": creator_external_id}
+    response = requests.delete(f"{BASE_URL}/lists/{list_id}/users", headers=unauthorized_headers, json=remove_user_payload)
+
+    # Assert
+    assert response.status_code == 403
+    response_data = response.json()
+    assert response_data["detail"] == "Only list creator can perform this action"
