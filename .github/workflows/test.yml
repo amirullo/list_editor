@@ -46,7 +46,7 @@ jobs:
         run: |
           psql -h localhost -U dev -d mydb -f ddl_postgres.sql
         env:
-          PGPASSWORD: test_password
+          PGPASSWORD: pymbep-koxzev-hokdU6
 
       - name: Start API server
         run: |
