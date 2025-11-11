@@ -42,6 +42,12 @@ jobs:
       - name: Wait for Postgres
         run: sleep 10
 
+      - name: Run DDL SQL script
+        run: |
+          psql -h localhost -U test_user -d test_db -f ddl_postgres.sql
+        env:
+          PGPASSWORD: test_password
+
       - name: Start API server
         run: |
           nohup python -m app.main &  # or flask run, uvicorn main:app, etc.
