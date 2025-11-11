@@ -57,4 +57,4 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg2://dev:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
         run: |
-          pytest -v
+          pytest -v ./tests
