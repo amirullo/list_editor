@@ -10,6 +10,7 @@ from app.repositories.global_role_repository import GlobalRoleRepository
 from app.services.global_role_service import GlobalRoleService
 from app.core.db import SessionLocal
 from app.services.list_role_service import ListRoleService
+from app.services.user_service import UserService
 
 
 @pytest.fixture(scope="function")
@@ -35,6 +36,7 @@ class TestListService:
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
         list_role_service = ListRoleService(list_user_repository=list_user_repo)
+        user_service = UserService(user_repository=user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -51,8 +53,13 @@ class TestListService:
         list_name = "Test Get List"
 
         # Create data in the test database
-        user_client = user_repo.get_or_create_by_external_id(client_external_id)
-        user_worker = user_repo.get_or_create_by_external_id(worker_external_id)
+        user_client = user_service.get_user_by_external_id(client_external_id)
+        if not user_client:
+            user_client = user_service.create_user(external_id=client_external_id)
+        
+        user_worker = user_service.get_user_by_external_id(worker_external_id)
+        if not user_worker:
+            user_worker = user_service.create_user(external_id=worker_external_id)
 
         global_role_service.assign_client_role(user_client.id)
         global_role_service.assign_worker_role(user_worker.id)
@@ -89,6 +96,7 @@ class TestListService:
         user_repo = UserRepository(db=test_db)
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        user_service = UserService(user_repository=user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -104,7 +112,9 @@ class TestListService:
         external_id = "creator_user_create"
 
         # Act
-        user = user_repo.get_or_create_by_external_id(external_id)
+        user = user_service.get_user_by_external_id(external_id)
+        if not user:
+            user = user_service.create_user(external_id=external_id)
         global_role_service.assign_client_role(user.id)
         list_create_data = ListCreate(name=list_name)
         create_result = list_service.create_list(list_create=list_create_data,
@@ -132,6 +142,7 @@ class TestListService:
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
         list_role_service = ListRoleService(list_user_repository=list_user_repo)
+        user_service = UserService(user_repository=user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -148,8 +159,12 @@ class TestListService:
         user_to_add_external_id = "user_to_add_test"
 
         # Create users
-        creator = user_repo.get_or_create_by_external_id(creator_external_id)
-        user_to_add = user_repo.get_or_create_by_external_id(user_to_add_external_id)
+        creator = user_service.get_user_by_external_id(creator_external_id)
+        if not creator:
+            creator = user_service.create_user(external_id=creator_external_id)
+        user_to_add = user_service.get_user_by_external_id(user_to_add_external_id)
+        if not user_to_add:
+            user_to_add = user_service.create_user(external_id=user_to_add_external_id)
 
         # Create list
         list_create_data = ListCreate(name=list_name)
@@ -180,6 +195,7 @@ class TestListService:
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
         list_role_service = ListRoleService(list_user_repository=list_user_repo)
+        user_service = UserService(user_repository=user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -196,8 +212,12 @@ class TestListService:
         user_to_remove_external_id = "user_to_remove_test"
 
         # Create users
-        creator = user_repo.get_or_create_by_external_id(creator_external_id)
-        user_to_remove = user_repo.get_or_create_by_external_id(user_to_remove_external_id)
+        creator = user_service.get_user_by_external_id(creator_external_id)
+        if not creator:
+            creator = user_service.create_user(external_id=creator_external_id)
+        user_to_remove = user_service.get_user_by_external_id(user_to_remove_external_id)
+        if not user_to_remove:
+            user_to_remove = user_service.create_user(external_id=user_to_remove_external_id)
 
         # Create list
         list_create_data = ListCreate(name=list_name)
@@ -235,6 +255,7 @@ class TestListService:
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
         list_role_service = ListRoleService(list_user_repository=list_user_repo)
+        user_service = UserService(user_repository=user_repo)
 
         list_service = ListService(
             db=test_db,
@@ -251,8 +272,12 @@ class TestListService:
         user_to_add_external_id = "user_to_add_test222"
 
         # Create users
-        creator = user_repo.get_or_create_by_external_id(creator_external_id)
-        user_to_add = user_repo.get_or_create_by_external_id(user_to_add_external_id)
+        creator = user_service.get_user_by_external_id(creator_external_id)
+        if not creator:
+            creator = user_service.create_user(external_id=creator_external_id)
+        user_to_add = user_service.get_user_by_external_id(user_to_add_external_id)
+        if not user_to_add:
+            user_to_add = user_service.create_user(external_id=user_to_add_external_id)
 
         global_role_service.assign_client_role(creator.id)
         global_role_service.assign_worker_role(user_to_add.id)
