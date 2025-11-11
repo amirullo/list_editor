@@ -96,7 +96,8 @@ async def update_list(
 async def delete_list(
     list_id: int,
     list_service: ListService = Depends(get_list_service),
-    user_internal_id: int = Depends(get_current_user_id)
+    user_internal_id: int = Depends(get_current_user_id),
+    _: None = Depends(require_list_creator)
 ):
     try:
         result = list_service.delete_list(list_id, user_internal_id)
