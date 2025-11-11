@@ -125,8 +125,14 @@ def require_global_role(required_role: GlobalRoleType):
 def require_list_access(
     list_id: int,
     user_internal_id: int = Depends(get_current_user_id),
+    list_repo: ListRepository = Depends(get_list_repository),
     list_role_service: ListRoleService = Depends(get_list_role_service)
 ) -> None:
+    # First, check if the list exists
+    if not list_repo.get_by_id(list_id):
+        raise HTTPException(status_code=404, detail="List not found")
+
+    # Then, check for access
     has_access = list_role_service.user_has_access_to_list(user_internal_id, list_id)
     if not has_access:
         raise HTTPException(status_code=403, detail="Access denied to this list")
@@ -134,8 +140,14 @@ def require_list_access(
 def require_list_creator(
     list_id: int,
     user_internal_id: int = Depends(get_current_user_id),
+    list_repo: ListRepository = Depends(get_list_repository),
     list_role_service: ListRoleService = Depends(get_list_role_service)
 ) -> None:
+    # First, check if the list exists
+    if not list_repo.get_by_id(list_id):
+        raise HTTPException(status_code=404, detail="List not found")
+
+    # Then, check if the user is the creator
     is_creator = list_role_service.is_user_list_creator(user_internal_id, list_id)
     if not is_creator:
         raise HTTPException(status_code=403, detail="Only list creator can perform this action")
