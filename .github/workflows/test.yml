@@ -15,7 +15,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: dev
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_PASSWORD: pymbep-koxzev-hokdU6
           POSTGRES_DB: mydb
         ports:
           - 5432:5432
