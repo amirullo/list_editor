@@ -67,12 +67,32 @@ class ListService:
             'items': created_items
         }
         
-        logger.info(f"Created list {new_list.id} with creator {user_internal_id}")
         return ListInDB.model_validate(response_data)
 
     def get_all_lists(self, user_internal_id: int) -> TypeList[ListInDB]:
         db_lists = self.list_repository.get_user_lists(user_internal_id)
-        return [ListInDB.model_validate(db_list) for db_list in db_lists]
+        
+        response_lists = []
+        for db_list in db_lists:
+            user_id_list = [user.user_id for user in db_list.list_users]
+            creator_id = None
+            for user in db_list.list_users:
+                if user.role_type == ListRoleType.CREATOR:
+                    creator_id = user.user_id
+                    break
+            
+            response_data = {
+                'id': db_list.id,
+                'name': db_list.name,
+                'creator_id': creator_id,
+                'user_id_list': user_id_list,
+                'created_at': db_list.created_at,
+                'updated_at': db_list.updated_at,
+                'items': db_list.items
+            }
+            response_lists.append(ListInDB.model_validate(response_data))
+
+        return response_lists
 
     def get_list(self, list_id: int, user_internal_id: int) -> ListInDB:
         if not self.list_user_repository.user_has_access(user_internal_id, list_id):
@@ -116,7 +136,6 @@ class ListService:
         if not updated_list:
             raise NotFoundException("List not found")
         
-        logger.info(f"Updated list {list_id} by user {user_internal_id}")
         return ListInDB.model_validate(updated_list)
 
     def delete_list(self, list_id: int, user_internal_id: int) -> Dict[str, str]:
@@ -132,7 +151,6 @@ class ListService:
         if not success:
             raise NotFoundException("List not found")
         
-        logger.info(f"Deleted list {list_id} by creator {user_internal_id}")
         return {"message": "List deleted successfully", "list_id": str(list_id)}
 
     def add_user_to_list(self, list_id: int, user_internal_id_to_add: int, requester_internal_id: int) -> ListInDB:
@@ -152,7 +170,6 @@ class ListService:
             role_type=ListRoleType.USER
         )
 
-        logger.info(f"Added user {user_internal_id_to_add} to list {list_id} by {requester_internal_id}")
         return self.get_list(list_id, requester_internal_id)
 
     def remove_user_from_list(self, list_id: int, user_internal_id_to_remove: int, requester_internal_id: int) -> ListInDB:
@@ -170,7 +187,6 @@ class ListService:
         if not success:
             raise NotFoundException("User not found in this list")
         
-        logger.info(f"Removed user {user_internal_id_to_remove} from list {list_id} by {requester_internal_id}")
         return self.get_list(list_id, requester_internal_id)
 
     def check_user_access(self, user_internal_id: int, list_id: int) -> bool:
@@ -191,5 +207,4 @@ class ListService:
         if not updated_list:
             raise NotFoundException("List not found")
         
-        logger.info(f"Updated list {list_id} description by user {user_internal_id}")
         return {"message": "List description updated successfully"}

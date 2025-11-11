@@ -1,9 +1,11 @@
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import uvicorn
 from contextlib import asynccontextmanager
+import json
+import time
 
 from app.api.endpoints import router
 from app.core.config import settings
@@ -45,7 +47,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
+# # Add CORS middleware
 # app.add_middleware(
 #     CORSMiddleware,
 #     allow_origins=["*"],
@@ -53,6 +55,42 @@ app = FastAPI(
 #     allow_methods=["*"],
 #     allow_headers=["*"],
 # )
+
+@app.middleware("http")
+async def log_errors_middleware(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+
+    if response.status_code >= 400:
+        try:
+            # Read the response body
+            response_body = b""
+            async for chunk in response.body_iterator:
+                response_body += chunk
+
+            decoded_body = response_body.decode('utf-8')
+
+            # Log the error details using the custom logger
+            logger.error(
+                f"Request: {request.method} {request.url} "
+                f"Status: {response.status_code} "
+                f"Response Body: {decoded_body}"
+            )
+
+            # Recreate the response with the original body to send back to the client
+            return Response(
+                content=response_body,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.media_type
+            )
+        except Exception as e:
+            logger.error(f"Error logging response body in middleware: {e}")
+            # If there's an error reading/logging the body, return the original response
+            return response
+    return response
+
 
 # Include API router
 app.include_router(router, prefix="/api")
