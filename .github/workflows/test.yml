@@ -10,6 +10,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,11 +39,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_dev.txt
 
+      - name: Wait for Postgres
+        run: sleep 10
+
       - name: Start API server
         run: |
           nohup python -m app.main &  # or flask run, uvicorn main:app, etc.
           sleep 5  # wait for the server to start
 
       - name: Run tests
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
         run: |
           pytest -v
