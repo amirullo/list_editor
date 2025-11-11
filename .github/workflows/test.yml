@@ -1,0 +1,60 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: dev
+          POSTGRES_PASSWORD: pymbep-koxzev-hokdU6
+          POSTGRES_DB: mydb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dev"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements_dev.txt
+
+      - name: Wait for Postgres
+        run: sleep 10
+
+      - name: Run DDL SQL script
+        run: |
+          psql -h localhost -U dev -d mydb -f ddl_postgres.sql
+        env:
+          PGPASSWORD: pymbep-koxzev-hokdU6
+
+      - name: Start API server
+        run: |
+          nohup python -m app.main &  # or flask run, uvicorn main:app, etc.
+          sleep 5  # wait for the server to start
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+psycopg2://dev:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
+        run: |
+          pytest -v
