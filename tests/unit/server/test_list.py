@@ -222,3 +222,59 @@ class TestListService:
         assert created_list.id == updated_list.id
         assert user_to_remove.id not in updated_list.user_id_list
         assert creator.id in updated_list.user_id_list
+
+    @pytest.mark.asyncio
+    async def test_get_all_lists_integration(
+            self,
+            test_db
+    ):
+        # Arrange
+        list_repo = ListRepository(db=test_db)
+        list_user_repo = ListUserRepository(db=test_db)
+        user_repo = UserRepository(db=test_db)
+        global_role_repo = GlobalRoleRepository(db=test_db)
+        global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo)
+
+        list_service = ListService(
+            db=test_db,
+            list_repository=list_repo,
+            list_user_repository=list_user_repo,
+            user_repository=user_repo,
+            global_role_service=global_role_service,
+            list_role_service=list_role_service,
+            item_service=None,  # Not used in this test
+        )
+
+        list_name = "Test Add User To List"
+        creator_external_id = "creator_for_add_user_test222"
+        user_to_add_external_id = "user_to_add_test222"
+
+        # Create users
+        creator = user_repo.get_or_create_by_external_id(creator_external_id)
+        user_to_add = user_repo.get_or_create_by_external_id(user_to_add_external_id)
+
+        global_role_service.assign_client_role(creator.id)
+        global_role_service.assign_worker_role(user_to_add.id)
+
+        # Create list
+        list_create_data = ListCreate(name=list_name)
+        created_list1 = list_service.create_list(list_create=list_create_data,
+                                                user_internal_id=creator.id
+                                                )
+
+        list_create_data = ListCreate(name=list_name)
+        created_list2 = list_service.create_list(list_create=list_create_data,
+                                                user_internal_id=user_to_add.id
+                                                )
+
+        # Act
+        updated_list = list_service.add_user_to_list(list_id=created_list1.id,
+                                                     user_internal_id_to_add=user_to_add.id,
+                                                     requester_internal_id=creator.id
+                                                     )
+
+        # Act
+
+        result = list_service.get_all_lists(user_internal_id=user_to_add.id)
+        result

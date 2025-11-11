@@ -28,7 +28,7 @@ def test_create_list_with_valid_data_no_items():
     # Arrange
     global_role_types = ["client", "worker"]
     list_name = "Valid Test List"
-    
+
     for global_role_type in global_role_types:
         # 1. Create user and get IDs
         external_user_id = generate_external_userid()
@@ -50,15 +50,15 @@ def test_create_list_with_valid_data_no_items():
             },
             "items": None
         }
-        
+
         # Act
         response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
-        
+
         # Assert
         assert response.status_code == 200
         response_data = response.json()
         assert response_data["message"] == "List created successfully"
-        
+
         list_data = response_data["data"]
         assert list_data["name"] == list_name
         assert "id" in list_data
@@ -236,3 +236,64 @@ def test_remove_creator_from_list_unauthorized():
     assert response.status_code == 403
     response_data = response.json()
     assert response_data["detail"] == "Only list creator can perform this action"
+
+
+def test_get_all_lists():
+    # Arrange
+    global_role_types = ["client", "worker"]
+    list_name = "Valid Test List"
+    several_external_user_id: list = []
+    several_internal_user_id: list = []
+    several_list_id: list = []
+
+    for global_role_type in global_role_types:
+        # 1. Create user and get IDs
+        external_user_id = generate_external_userid()
+        user_data = login_or_create_user(external_user_id)
+        user_internal_id = user_data['id']
+
+        # 2. Create global role for the user
+        create_global_role_response = create_global_role(external_user_id, user_internal_id, global_role_type)
+        assert create_global_role_response.status_code == 200
+
+        # 3. Create list
+        headers = {
+            "Content-Type": "application/json",
+            "X-User-ID": external_user_id
+        }
+        payload = {
+            "list_create": {
+                "name": list_name
+            },
+            "items": None
+        }
+        response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+        response_data = response.json()
+        several_list_id.append(response_data['data']['id'])
+        several_internal_user_id.append(user_internal_id)
+        several_external_user_id.append(external_user_id)
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": several_external_user_id[0]
+    }
+    add_user_payload = {"user_external_id": several_external_user_id[1]}
+    requests.post(f"{BASE_URL}/lists/{several_list_id[0]}/users",
+                             headers=headers,
+                             json=add_user_payload)
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": several_external_user_id[1]
+    }
+    payload = {
+    }
+    response = requests.get(f"{BASE_URL}/lists/", headers=headers, json=payload)
+
+    # Assert
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["message"] == "Lists retrieved successfully"
+    list_data = response_data["data"]
+    assert user_internal_id in list_data[0]["user_id_list"]
+    assert len(list_data) == 2
