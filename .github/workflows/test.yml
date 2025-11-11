@@ -14,13 +14,13 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: test_user
+          POSTGRES_USER: dev
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U test_user"
+          --health-cmd "pg_isready -U dev"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -44,7 +44,7 @@ jobs:
 
       - name: Run DDL SQL script
         run: |
-          psql -h localhost -U test_user -d test_db -f ddl_postgres.sql
+          psql -h localhost -U dev -d test_db -f ddl_postgres.sql
         env:
           PGPASSWORD: test_password
 
@@ -55,6 +55,6 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+psycopg2://test_user:test_password@localhost:5432/test_db
+          DATABASE_URL: postgresql+psycopg2://dev:test_password@localhost:5432/test_db
         run: |
           pytest -v
