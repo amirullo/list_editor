@@ -7,6 +7,7 @@ from app.schemas.response_schema import ResponseModel, StatusMessage
 from app.services.list_service import ListService
 from app.services.item_service import ItemService
 from app.services.lock_service import LockService
+from app.services.user_service import UserService # Import UserService
 from app.api.dependencies import (
     get_list_service,
     get_item_service,
@@ -15,12 +16,11 @@ from app.api.dependencies import (
     require_global_role,
     require_list_access,
     require_list_creator,
-    get_user_repository
+    get_user_service # Import get_user_service
 )
 from app.core.exceptions import NotFoundException, LockException, ForbiddenException, BaseAPIException
 from app.models.global_role_model import GlobalRoleType
 from pydantic import BaseModel
-from app.repositories.user_repository import UserRepository
 from app.utils.logger import logger
 
 # Add this new request model at the top of the file
@@ -116,12 +116,12 @@ async def add_user_to_list(
     list_id: int,
     user_data: ListAddUser,
     list_service: ListService = Depends(get_list_service),
-    user_repo: UserRepository = Depends(get_user_repository),
+    user_service: UserService = Depends(get_user_service), # Use UserService
     user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        user_to_add = user_repo.get_by_external_id(user_data.user_external_id)
+        user_to_add = user_service.get_user_by_external_id(user_data.user_external_id) # Use UserService method
         if not user_to_add:
             raise NotFoundException(f"User with external ID {user_data.user_external_id} not found")
         
@@ -137,12 +137,12 @@ async def remove_user_from_list(
     list_id: int,
     user_data: ListRemoveUser,
     list_service: ListService = Depends(get_list_service),
-    user_repo: UserRepository = Depends(get_user_repository),
+    user_service: UserService = Depends(get_user_service), # Use UserService
     user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_creator)
 ):
     try:
-        user_to_remove = user_repo.get_by_external_id(user_data.user_external_id)
+        user_to_remove = user_service.get_user_by_external_id(user_data.user_external_id) # Use UserService method
         if not user_to_remove:
             raise NotFoundException(f"User with external ID {user_data.user_external_id} not found")
         updated_list = list_service.remove_user_from_list(list_id, user_to_remove.id, user_internal_id)

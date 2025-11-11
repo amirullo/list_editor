@@ -8,6 +8,7 @@ from app.services.global_role_service import GlobalRoleService
 from app.services.list_role_service import ListRoleService
 from app.services.item_service import ItemService
 from app.services.lock_service import LockService
+from app.services.user_service import UserService # Import UserService
 from app.repositories.global_role_repository import GlobalRoleRepository
 from app.repositories.list_user_repository import ListUserRepository
 from app.repositories.list_repository import ListRepository
@@ -24,11 +25,15 @@ def get_external_user_id(user_external_id: str = Header(..., alias="X-User-ID"))
 def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
     return UserRepository(db)
 
+# Add new dependency for UserService
+def get_user_service(user_repo: UserRepository = Depends(get_user_repository)) -> UserService:
+    return UserService(user_repo)
+
 def get_current_user_id(
     user_external_id: str = Depends(get_external_user_id),
-    user_repo: UserRepository = Depends(get_user_repository)
+    user_service: UserService = Depends(get_user_service) # Use UserService
 ) -> int:
-    user = user_repo.get_by_external_id(user_external_id)
+    user = user_service.get_user_by_external_id(user_external_id) # Use UserService method
     if not user:
         raise HTTPException(status_code=401, detail="User not found or not authorized")
     return user.id
