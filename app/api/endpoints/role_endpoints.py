@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from typing import List
 from app.schemas.global_role_schema import GlobalRoleCreate, GlobalRoleUpdate, GlobalRoleInDB
 from app.schemas.list_role_schema import ListRoleCreate, ListRoleInDB
@@ -21,13 +21,8 @@ async def create_global_role(
     global_role_service: GlobalRoleService = Depends(get_global_role_service),
     user_internal_id: int = Depends(get_current_user_id)
 ):
-    try:
-        created_role = global_role_service.create_role(role.user_internal_id, role.role)
-        return ResponseModel(data=created_role, message="Global role created successfully")
-    except PermissionException as pe:
-        raise HTTPException(status_code=403, detail=str(pe))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    created_role = global_role_service.create_role(role.user_internal_id, role.role)
+    return ResponseModel(data=created_role, message="Global role created successfully")
 
 @router.get("/global/{user_internal_id}", response_model=ResponseModel[GlobalRoleInDB])
 async def get_global_role(
@@ -35,15 +30,10 @@ async def get_global_role(
     global_role_service: GlobalRoleService = Depends(get_global_role_service),
     current_user_internal_id: int = Depends(get_current_user_id)
 ):
-    try:
-        role = global_role_service.get_role(user_internal_id)
-        if role:
-            return ResponseModel(data=role, message="Global role retrieved successfully")
-        raise NotFoundException("Global role not found")
-    except NotFoundException as nfe:
-        raise HTTPException(status_code=404, detail=str(nfe))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    role = global_role_service.get_role(user_internal_id)
+    if role:
+        return ResponseModel(data=role, message="Global role retrieved successfully")
+    raise NotFoundException("Global role not found")
 
 # @router.put("/global/{user_internal_id}", response_model=ResponseModel[GlobalRoleInDB])
 # async def update_global_role(
@@ -52,15 +42,8 @@ async def get_global_role(
 #     global_role_service: GlobalRoleService = Depends(get_global_role_service),
 #     current_user_internal_id: int = Depends(get_current_user_id)
 # ):
-#     try:
-#         updated_role = global_role_service.update_role(user_internal_id, role_update.role_type)
-#         return ResponseModel(data=updated_role, message="Global role updated successfully")
-#     except PermissionException as pe:
-#         raise HTTPException(status_code=403, detail=str(pe))
-#     except NotFoundException as nfe:
-#         raise HTTPException(status_code=404, detail=str(nfe))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+#     updated_role = global_role_service.update_role(user_internal_id, role_update.role_type)
+#     return ResponseModel(data=updated_role, message="Global role updated successfully")
 
 # @router.delete("/global/{user_internal_id}", response_model=ResponseModel[dict])
 # async def delete_global_role(
@@ -68,15 +51,8 @@ async def get_global_role(
 #     global_role_service: GlobalRoleService = Depends(get_global_role_service),
 #     current_user_internal_id: int = Depends(get_current_user_id)
 # ):
-#     try:
-#         global_role_service.delete_role(user_internal_id)
-#         return ResponseModel(data={"user_internal_id": user_internal_id}, message="Global role deleted successfully")
-#     except PermissionException as pe:
-#         raise HTTPException(status_code=403, detail=str(pe))
-#     except NotFoundException as nfe:
-#         raise HTTPException(status_code=404, detail=str(nfe))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+#     global_role_service.delete_role(user_internal_id)
+#     return ResponseModel(data={"user_internal_id": user_internal_id}, message="Global role deleted successfully")
 
 # List Role Endpoints
 
@@ -86,13 +62,8 @@ async def get_global_role(
 #     list_role_service: ListRoleService = Depends(get_list_role_service),
 #     current_user_internal_id: int = Depends(get_current_user_id)
 # ):
-#     try:
-#         created_role = list_role_service.add_user_to_list(role.user_internal_id, role.list_id, role.role_type)
-#         return ResponseModel(data=created_role, message="List role created successfully")
-#     except PermissionException as pe:
-#         raise HTTPException(status_code=403, detail=str(pe))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+#     created_role = list_role_service.add_user_to_list(role.user_internal_id, role.list_id, role.role_type)
+#     return ResponseModel(data=created_role, message="List role created successfully")
 
 @router.get("/list/{list_id}/{user_internal_id}", response_model=ResponseModel[ListRoleInDB])
 async def get_list_role(
@@ -101,15 +72,10 @@ async def get_list_role(
     list_role_service: ListRoleService = Depends(get_list_role_service),
     current_user_internal_id: int = Depends(get_current_user_id)
 ):
-    try:
-        role = list_role_service.get_user_role_in_list(user_internal_id, list_id)
-        if role:
-            return ResponseModel(data=ListRoleInDB(user_internal_id=user_internal_id, list_id=list_id, role_type=role), message="List role retrieved successfully")
-        raise NotFoundException("List role not found")
-    except NotFoundException as nfe:
-        raise HTTPException(status_code=404, detail=str(nfe))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    role = list_role_service.get_user_role_in_list(user_internal_id, list_id)
+    if role:
+        return ResponseModel(data=ListRoleInDB(user_internal_id=user_internal_id, list_id=list_id, role_type=role), message="List role retrieved successfully")
+    raise NotFoundException("List role not found")
 
 # @router.put("/list/{list_id}/{user_internal_id}", response_model=ResponseModel[ListRoleInDB])
 # async def update_list_role(
@@ -119,15 +85,8 @@ async def get_list_role(
 #     list_role_service: ListRoleService = Depends(get_list_role_service),
 #     current_user_internal_id: int = Depends(get_current_user_id)
 # ):
-#     try:
-#         updated_role = list_role_service.update_user_role_in_list(user_internal_id, list_id, role_update.role_type)
-#         return ResponseModel(data=updated_role, message="List role updated successfully")
-#     except PermissionException as pe:
-#         raise HTTPException(status_code=403, detail=str(pe))
-#     except NotFoundException as nfe:
-#         raise HTTPException(status_code=404, detail=str(nfe))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+#     updated_role = list_role_service.update_user_role_in_list(user_internal_id, list_id, role_update.role_type)
+#     return ResponseModel(data=updated_role, message="List role updated successfully")
 
 # @router.delete("/list/{list_id}/{user_internal_id}", response_model=ResponseModel[dict])
 # async def delete_list_role(
@@ -136,12 +95,5 @@ async def get_list_role(
 #     list_role_service: ListRoleService = Depends(get_list_role_service),
 #     current_user_internal_id: int = Depends(get_current_user_id)
 # ):
-#     try:
-#         list_role_service.remove_user_from_list(user_internal_id, list_id)
-#         return ResponseModel(data={"user_internal_id": user_internal_id, "list_id": list_id}, message="List role deleted successfully")
-#     except PermissionException as pe:
-#         raise HTTPException(status_code=403, detail=str(pe))
-#     except NotFoundException as nfe:
-#         raise HTTPException(status_code=404, detail=str(nfe))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+#     list_role_service.remove_user_from_list(user_internal_id, list_id)
+#     return ResponseModel(data={"user_internal_id": user_internal_id, "list_id": list_id}, message="List role deleted successfully")
