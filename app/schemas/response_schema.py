@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import TypeVar, Generic, Optional
+from app.schemas.lock_schema import LockInDB # Import the Pydantic LockInDB schema
 
 T = TypeVar('T')
 
@@ -18,7 +19,3 @@ class ResponseModel(BaseModel, Generic[T]):
             }
         }
     )
-
-
-class StatusMessage(BaseModel):
-    message: str

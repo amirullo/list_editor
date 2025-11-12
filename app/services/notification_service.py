@@ -38,3 +38,9 @@ class NotificationService:
     def notify_list_change(self, list_id: int, change_type: str):
         # Implementation needed
         pass
+
+    def notify_lock_acquired(self, list_id: int, user_id: int):
+        logger.info(f"Notification: User {user_id} acquired lock on list {list_id}")
+
+    def notify_lock_released(self, list_id: int, user_id: int):
+        logger.info(f"Notification: User {user_id} released lock on list {list_id}")

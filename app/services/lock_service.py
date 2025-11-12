@@ -59,7 +59,7 @@ class LockService:
                 logger.info(f"Lock released on list {list_id} by user {user_internal_id}")
                 return {"status": "success", "message": "Lock released successfully"}
             else:
-                return {"status": "error", "message": "No lock found or you don't own the lock"}
+                raise ForbiddenException("Lock not held by current user or not found")
                 
         except (ForbiddenException, NotFoundException):
             raise

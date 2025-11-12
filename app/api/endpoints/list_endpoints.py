@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, status
 from typing import List as TypeList, Dict, Any, Optional
 from app.schemas.list_schema import ListCreate, ListUpdate, ListInDB, ListAddUser, ListRemoveUser
 from app.schemas.item_schema import ItemCreate, ItemUpdate, ItemInDB
-from app.schemas.response_schema import ResponseModel, StatusMessage
+from app.schemas.response_schema import ResponseModel
+from app.schemas.lock_schema import LockInDB
 from app.services.list_service import ListService
 from app.services.item_service import ItemService
 from app.services.lock_service import LockService
@@ -28,7 +29,7 @@ class CreateListRequest(BaseModel):
 
 router = APIRouter()
 
-@router.post("/", response_model=ResponseModel[ListInDB])
+@router.post("/", response_model=ResponseModel[ListInDB], status_code=status.HTTP_201_CREATED)
 async def create_list(
     request: CreateListRequest,
     list_service: ListService = Depends(get_list_service),
@@ -153,7 +154,7 @@ async def delete_item(
     item_service.delete_item(list_id, item_id, user_internal_id)
     return ResponseModel(data={"status": "success"}, message="Item deleted successfully")
 
-@router.post("/{list_id}/lock", response_model=ResponseModel[StatusMessage])
+@router.post("/{list_id}/lock", response_model=ResponseModel[LockInDB])
 async def acquire_lock(
     list_id: int,
     lock_service: LockService = Depends(get_lock_service),
@@ -161,9 +162,9 @@ async def acquire_lock(
     _: None = Depends(require_list_access)
 ):
     lock = lock_service.acquire_lock(list_id, user_internal_id)
-    return ResponseModel(data={"status": "success", "lock": lock}, message="Lock acquired successfully")
+    return ResponseModel(data=LockInDB.model_validate(lock), message="Lock acquired successfully")
 
-@router.delete("/{list_id}/lock", response_model=ResponseModel[StatusMessage])
+@router.delete("/{list_id}/lock", response_model=ResponseModel[None]) # Changed response_model
 async def release_lock(
     list_id: int,
     lock_service: LockService = Depends(get_lock_service),
@@ -171,4 +172,4 @@ async def release_lock(
     _: None = Depends(require_list_access)
 ):
     result = lock_service.release_lock(list_id, user_internal_id)
-    return ResponseModel(data=result, message="Lock released successfully")
+    return ResponseModel(message="Lock released successfully") # Simplified return

@@ -4,7 +4,7 @@ from .list_schema import (
 from .item_schema import (
     ItemBase, ItemCreate, ItemUpdate, ItemInDB
 )
-from .response_schema import StatusMessage, ResponseModel
+from .response_schema import ResponseModel
 from .global_role_schema import (
     GlobalRoleBase, GlobalRoleCreate, GlobalRoleUpdate, GlobalRoleInDB
 )
