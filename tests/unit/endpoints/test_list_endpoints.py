@@ -55,7 +55,7 @@ def test_create_list_with_valid_data_no_items():
         response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
 
         # Assert
-        assert response.status_code == 200
+        assert response.status_code == 201
         response_data = response.json()
         assert response_data["message"] == "List created successfully"
 
@@ -159,7 +159,7 @@ def test_remove_user_from_list_not_found():
     # Assert
     assert response.status_code == 404
     response_data = response.json()
-    assert response_data["detail"] == 'User not found in this list'
+    assert response_data["detail"] == "User not found in this list"
 
 def test_remove_user_from_list_unauthorized():
     # Arrange
