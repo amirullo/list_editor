@@ -91,7 +91,6 @@ class ItemService:
             raise NotFoundException("Item not found")
         
         logger.info(f"Updated item {item_id} in list {list_id} by user {user_internal_id}")
-        logger.debug(f"Updated item SQLAlchemy object: {updated_item.__dict__}") # Debugging line
         return ItemInDB.model_validate(updated_item)
 
     def delete_item(self, list_id: int, item_id: int, user_internal_id: int) -> Dict[str, str]:
@@ -105,13 +104,11 @@ class ItemService:
         return {"message": "Item deleted successfully"}
 
     def _validate_item_update_permissions(self, user_internal_id: int, list_id: int, update_data: Dict[str, Any]) -> None:
-        logger.debug(f"Validating update permissions for user {user_internal_id} on list {list_id} with data {update_data}")
         if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("No access to this list")
         
         global_role = self.global_role_service.get_role(user_internal_id)
         global_role_type = global_role.role_type if global_role else None
-        logger.debug(f"User {user_internal_id} has global role: {global_role_type}")
         
         restricted_fields = []
         
@@ -122,7 +119,6 @@ class ItemService:
             restricted_fields.append('quantity (requires WORKER global role)')
         
         if restricted_fields:
-            logger.debug(f"Restricted fields found: {restricted_fields}")
             raise ForbiddenException(f"Additional global role restrictions: {', '.join(restricted_fields)}")
         
         logger.debug(f"User {user_internal_id} with global role {global_role_type} validated for item update")

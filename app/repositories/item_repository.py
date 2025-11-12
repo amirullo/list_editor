@@ -19,14 +19,14 @@ class ItemRepository(BaseRepository[Item]):
     def get_by_id(self, list_id: int, item_id: int) -> Optional[Item]:
         return self.db.query(Item).filter(
             Item.list_id == list_id,
-            Item.id == item_id  # Corrected from Item.item_id
+            Item.id == item_id
         ).first()
 
     def get_all_by_list(self, list_id: int) -> TypeList[Item]:
         return self.db.query(Item).filter(Item.list_id == list_id).all()
 
     def update(self, item_id: int, item_data: dict) -> Optional[Item]:
-        db_item = self.db.query(Item).filter(Item.id == item_id).first() # Corrected from Item.item_id
+        db_item = self.db.query(Item).filter(Item.id == item_id).first()
         if db_item:
             for key, value in item_data.items():
                 setattr(db_item, key, value)

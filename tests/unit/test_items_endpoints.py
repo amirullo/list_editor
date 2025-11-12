@@ -315,7 +315,7 @@ def test_update_item_price_with_client_role_successfully():
     creator_data = login_or_create_user(creator_external_id)
     creator_internal_id = creator_data['id']
     create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'client')
-    assert create_global_role_response.status_code == 200 # Assert role creation success
+    assert create_global_role_response.status_code == 200
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
     list_payload = {"list_create": {"name": "List for Price Update Test"}, "items": None}
@@ -354,8 +354,8 @@ def test_update_item_price_without_client_role_forbidden():
     creator_external_id = generate_external_userid()
     creator_data = login_or_create_user(creator_external_id)
     creator_internal_id = creator_data['id']
-    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'worker') # Worker role, not client
-    assert create_global_role_response.status_code == 200 # Assert role creation success
+    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'worker')
+    assert create_global_role_response.status_code == 200
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
     list_payload = {"list_create": {"name": "List for Price Update Forbidden Test"}, "items": None}
@@ -380,8 +380,8 @@ def test_update_item_quantity_with_worker_role_successfully():
     creator_external_id = generate_external_userid()
     creator_data = login_or_create_user(creator_external_id)
     creator_internal_id = creator_data['id']
-    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'worker') # Worker role
-    assert create_global_role_response.status_code == 200 # Assert role creation success
+    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'worker')
+    assert create_global_role_response.status_code == 200
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
     list_payload = {"list_create": {"name": "List for Quantity Update Test"}, "items": None}
@@ -420,8 +420,8 @@ def test_update_item_quantity_without_worker_role_forbidden():
     creator_external_id = generate_external_userid()
     creator_data = login_or_create_user(creator_external_id)
     creator_internal_id = creator_data['id']
-    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'client') # Client role, not worker
-    assert create_global_role_response.status_code == 200 # Assert role creation success
+    create_global_role_response = create_global_role(creator_external_id, creator_internal_id, 'client')
+    assert create_global_role_response.status_code == 200
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
     list_payload = {"list_create": {"name": "List for Quantity Update Forbidden Test"}, "items": None}

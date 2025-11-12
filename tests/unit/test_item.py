@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock
-from datetime import datetime # Import datetime
+from datetime import datetime
 from app.services.item_service import ItemService
 from app.schemas.item_schema import ItemCreate, ItemInDB
 from app.core.exceptions import NotFoundException, ForbiddenException
@@ -42,15 +42,15 @@ def test_create_item_successfully(item_service, mock_item_repository, mock_list_
     mock_list_role_service.user_has_access_to_list.return_value = True
     mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List")
     
-    current_time = datetime.now() # Get current time
+    current_time = datetime.now()
     mock_item_repository.create.return_value = Item(
         id=1,
         list_id=list_id,
         name=item_create.name,
         description=item_create.description,
-        quantity=1, # Added quantity
-        created_at=current_time, # Add created_at
-        updated_at=current_time, # Add updated_at
+        quantity=1,
+        created_at=current_time,
+        updated_at=current_time,
     )
 
     # Act
@@ -109,7 +109,7 @@ def test_get_item_successfully(item_service, mock_item_repository, mock_list_rol
         list_id=list_id,
         name="Retrieved Item",
         description="Description of retrieved item",
-        quantity=1, # Added quantity
+        quantity=1,
         created_at=current_time,
         updated_at=current_time
     )
