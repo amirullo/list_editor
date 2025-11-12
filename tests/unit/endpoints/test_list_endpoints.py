@@ -474,3 +474,115 @@ def test_delete_list_not_found():
     assert response.status_code == 404
     response_data = response.json()
     assert response_data["detail"] == "List not found"
+
+def test_acquire_and_release_lock_successfully():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    list_payload = {"list_create": {"name": "Lock Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    # Act - Acquire Lock
+    acquire_response = requests.post(f"{BASE_URL}/lists/{list_id}/lock", headers=headers)
+
+    # Assert - Acquire Lock
+    assert acquire_response.status_code == 200
+    acquire_response_data = acquire_response.json()
+    assert acquire_response_data["message"] == "Lock acquired successfully"
+    assert acquire_response_data["data"]["status"] == "success"
+    assert acquire_response_data["data"]["lock"]["list_id"] == list_id
+    assert acquire_response_data["data"]["lock"]["user_id"] == creator_internal_id
+
+    # Act - Release Lock
+    release_response = requests.delete(f"{BASE_URL}/lists/{list_id}/lock", headers=headers)
+
+    # Assert - Release Lock
+    assert release_response.status_code == 200
+    release_response_data = release_response.json()
+    assert release_response_data["message"] == "Lock released successfully"
+    assert release_response_data["data"]["status"] == "success"
+
+def test_acquire_lock_already_locked():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    other_user_external_id = generate_external_userid()
+    other_user_data = login_or_create_user(other_user_external_id)
+    other_user_internal_id = other_user_data['id']
+    create_global_role(other_user_external_id, other_user_internal_id, 'worker')
+
+    creator_headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    other_user_headers = {"Content-Type": "application/json", "X-User-ID": other_user_external_id}
+
+    list_payload = {"list_create": {"name": "Lock Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=creator_headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    # Creator acquires the lock first
+    acquire_response = requests.post(f"{BASE_URL}/lists/{list_id}/lock", headers=creator_headers)
+    assert acquire_response.status_code == 200
+
+    # Act - Other user tries to acquire the same lock
+    second_acquire_response = requests.post(f"{BASE_URL}/lists/{list_id}/lock", headers=other_user_headers)
+
+    # Assert
+    assert second_acquire_response.status_code == 409 # Conflict
+    second_acquire_response_data = second_acquire_response.json()
+    assert "Lock already held by another user" in second_acquire_response_data["detail"]
+
+def test_release_lock_not_held_by_user():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    other_user_external_id = generate_external_userid()
+    other_user_data = login_or_create_user(other_user_external_id)
+    other_user_internal_id = other_user_data['id']
+    create_global_role(other_user_external_id, other_user_internal_id, 'worker')
+
+    creator_headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    other_user_headers = {"Content-Type": "application/json", "X-User-ID": other_user_external_id}
+
+    list_payload = {"list_create": {"name": "Lock Test List"}, "items": None}
+    list_response = requests.post(f"{BASE_URL}/lists/", headers=creator_headers, json=list_payload)
+    list_id = list_response.json()["data"]["id"]
+
+    # Creator acquires the lock
+    acquire_response = requests.post(f"{BASE_URL}/lists/{list_id}/lock", headers=creator_headers)
+    assert acquire_response.status_code == 200
+
+    # Act - Other user tries to release the lock
+    release_response = requests.delete(f"{BASE_URL}/lists/{list_id}/lock", headers=other_user_headers)
+
+    # Assert
+    assert release_response.status_code == 403 # Forbidden
+    release_response_data = release_response.json()
+    assert "Lock not held by current user" in release_response_data["detail"]
+
+def test_release_lock_not_found():
+    # Arrange
+    creator_external_id = generate_external_userid()
+    creator_data = login_or_create_user(creator_external_id)
+    creator_internal_id = creator_data['id']
+    create_global_role(creator_external_id, creator_internal_id, 'client')
+
+    headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
+    non_existent_list_id = 999999
+
+    # Act - Try to release a lock for a non-existent list
+    release_response = requests.delete(f"{BASE_URL}/lists/{non_existent_list_id}/lock", headers=headers)
+
+    # Assert
+    assert release_response.status_code == 404 # Not Found
+    release_response_data = release_response.json()
+    assert "Lock not found" in release_response_data["detail"]
