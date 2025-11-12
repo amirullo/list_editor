@@ -12,6 +12,8 @@ from app.core.config import settings
 from app.utils.logger import logger
 from app.core.db import engine, get_db, initialize_database
 from app.models.base import Base
+from app.core.exceptions import BaseAPIException
+from app.core.error_handlers import api_exception_handler, generic_exception_handler
 
 # Import all models explicitly to ensure they're registered
 from app.models.list_model import List
@@ -56,40 +58,9 @@ app = FastAPI(
 #     allow_headers=["*"],
 # )
 
-@app.middleware("http")
-async def log_errors_middleware(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-
-    if response.status_code >= 400:
-        try:
-            # Read the response body
-            response_body = b""
-            async for chunk in response.body_iterator:
-                response_body += chunk
-
-            decoded_body = response_body.decode('utf-8')
-
-            # Log the error details using the custom logger
-            logger.error(
-                f"Request: {request.method} {request.url} "
-                f"Status: {response.status_code} "
-                f"Response Body: {decoded_body}"
-            )
-
-            # Recreate the response with the original body to send back to the client
-            return Response(
-                content=response_body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type
-            )
-        except Exception as e:
-            logger.error(f"Error logging response body in middleware: {e}")
-            # If there's an error reading/logging the body, return the original response
-            return response
-    return response
+# Register exception handlers
+app.add_exception_handler(BaseAPIException, api_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 
 # Include API router
