@@ -11,6 +11,7 @@ from app.services.global_role_service import GlobalRoleService
 from app.core.db import SessionLocal
 from app.services.list_role_service import ListRoleService
 from app.services.user_service import UserService
+import uuid
 
 
 @pytest.fixture(scope="function")
@@ -64,11 +65,14 @@ class TestListService:
         global_role_service.assign_client_role(user_client.id)
         global_role_service.assign_worker_role(user_worker.id)
 
-        created_list = list_repo.create({"name": list_name})
+        # Use list_service to create the list
+        list_create_data = ListCreate(name=list_name)
+        created_list = list_service.create_list(list_create=list_create_data, user_internal_id=user_client.id)
         list_id = created_list.id
 
-        list_user_repo.create(user_internal_id=user_client.id, list_id=list_id, role_type=ListRoleType.CREATOR)
-        list_user_repo.create(user_internal_id=user_worker.id, list_id=list_id, role_type=ListRoleType.USER)
+        # Use list_service to add the worker to the list
+        # The creator is already added by create_list
+        list_service.add_user_to_list(list_id=list_id, user_internal_id_to_add=user_worker.id, requester_internal_id=user_client.id)
 
         # Act
         result = list_service.get_list(list_id=list_id, user_internal_id=user_client.id)
@@ -97,6 +101,7 @@ class TestListService:
         global_role_repo = GlobalRoleRepository(db=test_db)
         global_role_service = GlobalRoleService(global_role_repository=global_role_repo)
         user_service = UserService(user_repository=user_repo)
+        list_role_service = ListRoleService(list_user_repository=list_user_repo) # Added for consistency
 
         list_service = ListService(
             db=test_db,
@@ -104,7 +109,7 @@ class TestListService:
             list_user_repository=list_user_repo,
             user_repository=user_repo,
             global_role_service=global_role_service,
-            list_role_service=None, # Not used in this test
+            list_role_service=list_role_service, # Changed from None
             item_service=None, # Not used in this test
         )
 
@@ -268,8 +273,8 @@ class TestListService:
         )
 
         list_name = "Test Add User To List"
-        creator_external_id = "creator_for_add_user_test222"
-        user_to_add_external_id = "user_to_add_test222"
+        creator_external_id = str(uuid.uuid4())
+        user_to_add_external_id = str(uuid.uuid4())
 
         # Create users
         creator = user_service.get_user_by_external_id(creator_external_id)
@@ -293,13 +298,15 @@ class TestListService:
                                                 user_internal_id=user_to_add.id
                                                 )
 
-        # Act
         updated_list = list_service.add_user_to_list(list_id=created_list1.id,
                                                      user_internal_id_to_add=user_to_add.id,
                                                      requester_internal_id=creator.id
                                                      )
-
         # Act
-
         result = list_service.get_all_lists(user_internal_id=user_to_add.id)
-        result
+        assert len(result) == 2
+        for mylist in result:
+            assert isinstance(mylist, ListInDB)
+        assert created_list1.id in [x.id for x in result]
+        assert creator.id in [x.creator_id for x in result]
+        assert user_to_add.id in [x.creator_id for x in result]
