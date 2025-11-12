@@ -24,7 +24,7 @@ class ItemService:
         self.notification_service = NotificationService()
 
     def _check_list_participant(self, list_id: int, user_internal_id: int):
-        if not self.list_role_service.user_has_access(user_internal_id, list_id):
+        if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("You don't have access to this list")
         
         db_list = self.list_repository.get_by_id(list_id)
@@ -46,7 +46,7 @@ class ItemService:
         return [ItemInDB.model_validate(item) for item in items]
     
     def create_item(self, list_id: int, item_create: ItemCreate, user_internal_id: int) -> ItemInDB:
-        if not self.list_role_service.user_has_access(user_internal_id, list_id):
+        if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("No access to this list")
         
         if not self.list_repository.get_by_id(list_id):
@@ -59,7 +59,7 @@ class ItemService:
         return ItemInDB.model_validate(new_item)
 
     def get_item(self, list_id: int, item_id: int, user_internal_id: int) -> ItemInDB:
-        if not self.list_role_service.user_has_access(user_internal_id, list_id):
+        if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("No access to this list")
         
         item = self.item_repository.get_by_id(list_id, item_id)
@@ -69,14 +69,14 @@ class ItemService:
         return ItemInDB.model_validate(item)
 
     def get_all_items(self, list_id: int, user_internal_id: int) -> TypeList[ItemInDB]:
-        if not self.list_role_service.user_has_access(user_internal_id, list_id):
+        if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("No access to this list")
         
         items = self.item_repository.get_all_by_list(list_id)
         return [ItemInDB.model_validate(item) for item in items]
 
     def update_item(self, list_id: int, item_id: int, item_update: ItemUpdate, user_internal_id: int) -> ItemInDB:
-        if not self.list_role_service.user_has_access(user_internal_id, list_id):
+        if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("No access to this list")
         
         current_item = self.item_repository.get_by_id(list_id, item_id)
@@ -91,6 +91,7 @@ class ItemService:
             raise NotFoundException("Item not found")
         
         logger.info(f"Updated item {item_id} in list {list_id} by user {user_internal_id}")
+        logger.debug(f"Updated item SQLAlchemy object: {updated_item.__dict__}") # Debugging line
         return ItemInDB.model_validate(updated_item)
 
     def delete_item(self, list_id: int, item_id: int, user_internal_id: int) -> Dict[str, str]:
@@ -104,11 +105,13 @@ class ItemService:
         return {"message": "Item deleted successfully"}
 
     def _validate_item_update_permissions(self, user_internal_id: int, list_id: int, update_data: Dict[str, Any]) -> None:
-        if not self.list_role_service.user_has_access(user_internal_id, list_id):
+        logger.debug(f"Validating update permissions for user {user_internal_id} on list {list_id} with data {update_data}")
+        if not self.list_role_service.user_has_access_to_list(user_internal_id, list_id):
             raise ForbiddenException("No access to this list")
         
         global_role = self.global_role_service.get_role(user_internal_id)
         global_role_type = global_role.role_type if global_role else None
+        logger.debug(f"User {user_internal_id} has global role: {global_role_type}")
         
         restricted_fields = []
         
@@ -119,6 +122,7 @@ class ItemService:
             restricted_fields.append('quantity (requires WORKER global role)')
         
         if restricted_fields:
+            logger.debug(f"Restricted fields found: {restricted_fields}")
             raise ForbiddenException(f"Additional global role restrictions: {', '.join(restricted_fields)}")
         
         logger.debug(f"User {user_internal_id} with global role {global_role_type} validated for item update")

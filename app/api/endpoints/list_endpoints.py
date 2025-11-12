@@ -127,7 +127,7 @@ async def get_items(
     user_internal_id: int = Depends(get_current_user_id),
     _: None = Depends(require_list_access)
 ):
-    items = item_service.get_items_by_list_id(list_id, user_internal_id)
+    items = item_service.get_items_by_list(list_id, user_internal_id) # Corrected method name
     return ResponseModel(data=items, message="Items retrieved successfully")
 
 @router.put("/{list_id}/items/{item_id}", response_model=ResponseModel[ItemInDB])

@@ -15,8 +15,8 @@ class NotFoundException(BaseAPIException):
 
 class PermissionException(BaseAPIException):
     """Raised when a user does not have permission to perform an action."""
-    def __init__(self, detail: str = "Permission denied"):
-        super().__init__(detail, status.HTTP_403_FORBIDDEN)
+    def __init__(self, detail: str = "Permission denied", status_code: int = status.HTTP_403_FORBIDDEN):
+        super().__init__(detail, status_code)
 
 class ForbiddenException(PermissionException):
     """A more specific permission-related exception for forbidden access."""
