@@ -25,6 +25,8 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Participant Management**: Creators can add/remove participants to their lists
 -  **List Updates**: All participants can modify list metadata
 -  **List Deletion**: Only creators can permanently delete lists
+-  **List Details**: Lists can include total price, total delivery period, and a flat address.
+-  **Store Locations**: Lists can include a map with store addresses.
 
 #### Item Management
 -  **Add Items**: All participants can add items to shared lists
@@ -32,6 +34,14 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Delete Items**: Remove items from lists
 -  **Item Categorization**: Organize items by categories
 -  **Price Tracking**: Track item prices and quantities
+-  **Link Parsing**: Parse item links to extract photo, price, delivery price, and delivery period.
+-  **Store Information**: Items can be associated with a store, including its address and distance.
+-  **Item Status**: Items have flags for "approved" (worker), "bought" (client/worker), and "delivered" (worker).
+
+#### Construction Workflow
+- **Process Management**: Define a construction process with a name, planned and actual periods, total material and worker prices, and a place description.
+- **Step Management**: Break down a process into steps, each with a name, planned and actual periods, material and worker prices, required items, and photos/videos of the results. Steps can have a parent step.
+- **Gantt Chart**: Visualize the project timeline with a Gantt diagram.
 
 #### Collaboration Features
 -  **Participant Access**: Share lists with specific users
@@ -47,7 +57,7 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Data Isolation**: Users only see lists they have access to
 -  **Participant Management**: Add and remove users from lists (creator only)
 
-#### Technical Features
+#### Technical & Utility Features
 -  **RESTful API**: Clean, intuitive API design
 -  **Data Validation**: Comprehensive input validation with Pydantic
 -  **Error Handling**: Detailed error responses and logging
@@ -55,19 +65,26 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Automatic Timestamps**: Creation and modification tracking
 -  **CORS Support**: Cross-origin resource sharing enabled
 -  **Containerization**: Docker support for easy deployment
+-  **Logging**: Centralized application logging and monitoring
+-  **Helper Functions**: Common utility functions and custom validators
 
 ## Architecture
 
 The application follows a layered architecture pattern with clear separation of concerns:
+
 ```
-┌─────────────────┐
-│   API Layer     │  ← FastAPI endpoints, request/response handling
+┌─────────────────┐ 
+│    API Layer    │  ← Endpoints & Request/Response (FastAPI)
 ├─────────────────┤
-│  Service Layer  │  ← Business logic, access control, notifications
+│   Schema Layer  │  ← Data Validation & Serialization (Pydantic)
 ├─────────────────┤
-│Repository Layer │  ← Data access, database operations
+│  Service Layer  │  ← Business Logic & Orchestration
 ├─────────────────┤
-│   Model Layer   │  ← SQLAlchemy models, database schema
+│Repository Layer │  ← Data Access & Database Operations (SQLAlchemy)
+├─────────────────┤
+│   Model Layer   │  ← Database Schema & ORM Models
+├─────────────────┤
+│   Core & Utils  │  ← Config, DB Session, Exceptions, Helpers
 └─────────────────┘
 ```
 
@@ -76,37 +93,32 @@ The application follows a layered architecture pattern with clear separation of 
 - **Dependencies**: Dependency injection for services and authentication
 - **Request/Response**: HTTP request processing and response formatting
 
-#### 2. Service Layer (`app/services/`)
+#### 2. Schema Layer (`app/schemas/`)
+- **Data Validation**: Pydantic models for request/response validation
+- **Type Safety**: Strong typing for API contracts
+- **Serialization**: Data transformation between layers
+
+#### 3. Service Layer (`app/services/`)
 - **Business Logic**: Core application logic and workflows
 - **Data Orchestration**: Coordination between multiple repositories
 - **Validation**: Business rule validation and enforcement
 - **Notifications**: User notification and messaging services
 
-#### 3. Repository Layer (`app/repositories/`)
+#### 4. Repository Layer (`app/repositories/`)
 - **Data Access**: Database operations and query management
 - **CRUD Operations**: Create, Read, Update, Delete operations for entities
 - **Query Optimization**: Efficient database queries and relationships
 - **Transaction Management**: Database transaction handling
 
-#### 4. Model Layer (`app/models/`)
+#### 5. Model Layer (`app/models/`)
 - **Database Schema**: SQLAlchemy models defining table structures
 - **Relationships**: Entity relationships and foreign key constraints
 - **Data Integrity**: Database-level constraints and validations
-
-#### 5. Schema Layer (`app/schemas/`)
-- **Data Validation**: Pydantic models for request/response validation
-- **Type Safety**: Strong typing for API contracts
-- **Serialization**: Data transformation between layers
 
 #### 6. Core Layer (`app/core/`)
 - **Configuration**: Application settings and environment management
 - **Database**: Database connection and session management
 - **Exceptions**: Custom exception classes and error handling
-
-#### 7. Utilities (`app/utils/`)
-- **Logging**: Application logging and monitoring
-- **UUID Generation**: Unique identifier creation
-- **Helper Functions**: Common utility functions
 
 ### Design Principles
 
@@ -195,7 +207,8 @@ list_editor/
 │   │   ├── user_model.py       # User entity model
 │   │   ├── lock_model.py       # Lock entity model
 │   │   ├── global_role_model.py # Global Role entity model
-│   │   └── list_role_model.py  # List Role entity model
+│   │   ├── list_role_model.py  # List Role entity model
+│   │   └── list_user_model.py  # List-User association model
 │   │
 │   ├── repositories/           # Data access layer
 │   │   ├── __init__.py
@@ -256,7 +269,7 @@ list_editor/
 - `DELETE /api/lists/{list_id}/lock` - Release lock on list
 
 ### Synchronization
-- `POST /api/lists/{list_id}/sync` - Manual synchronization endpoint
+- `POST  /api/lists/{list_id}/sync` - Manual synchronization endpoint
 - `GET /api/sync/notifications` - Get notifications for changes
 
 ### Role Management
