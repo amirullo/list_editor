@@ -64,6 +64,7 @@ class ListService:
             'user_id_list': user_id_list,
             'created_at': new_list.created_at,
             'updated_at': new_list.updated_at,
+            'destination_address': new_list.destination_address,
             'items': created_items
         }
         
@@ -88,6 +89,7 @@ class ListService:
                 'user_id_list': user_id_list,
                 'created_at': db_list.created_at,
                 'updated_at': db_list.updated_at,
+                'destination_address': db_list.destination_address,
                 'items': db_list.items
             }
             response_lists.append(ListInDB.model_validate(response_data))
@@ -116,6 +118,7 @@ class ListService:
             'user_id_list': user_id_list,
             'created_at': db_list.created_at,
             'updated_at': db_list.updated_at,
+            'destination_address': db_list.destination_address,
             'items': db_list.items
         }
         

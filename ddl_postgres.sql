@@ -125,7 +125,16 @@ CREATE TABLE public.items (
     price double precision,
     list_id integer NOT NULL,
     created_at timestamp without time zone,
-    updated_at timestamp without time zone
+    updated_at timestamp without time zone,
+    item_link character varying,
+    item_photo_link character varying,
+    delivery_price double precision,
+    delivery_period integer,
+    store_address character varying,
+    store_distance double precision,
+    approved integer,
+    bought integer,
+    delivered integer
 );
 
 
@@ -200,7 +209,8 @@ CREATE TABLE public.lists (
     name character varying NOT NULL,
     description character varying,
     created_at timestamp without time zone,
-    updated_at timestamp without time zone
+    updated_at timestamp without time zone,
+    destination_address character varying
 );
 
 

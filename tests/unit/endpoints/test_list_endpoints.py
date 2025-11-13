@@ -28,6 +28,7 @@ def test_create_list_with_valid_data_no_items():
     # Arrange
     global_role_types = ["client", "worker"]
     list_name = "Valid Test List"
+    destination_address = "123 Main St"
 
     for global_role_type in global_role_types:
         # 1. Create user and get IDs
@@ -46,7 +47,8 @@ def test_create_list_with_valid_data_no_items():
         }
         payload = {
             "list_create": {
-                "name": list_name
+                "name": list_name,
+                "destination_address": destination_address
             },
             "items": None
         }
@@ -61,6 +63,7 @@ def test_create_list_with_valid_data_no_items():
 
         list_data = response_data["data"]
         assert list_data["name"] == list_name
+        assert list_data["destination_address"] == destination_address
         assert "id" in list_data
         assert list_data["creator_id"] == user_internal_id
         assert user_internal_id in list_data["user_id_list"]
@@ -85,7 +88,8 @@ def test_add_user_to_list():
     }
     list_payload = {
         "list_create": {
-            "name": "Add User Test List"
+            "name": "Add User Test List",
+            "destination_address": "456 Oak Ave"
         },
         "items": None
     }
@@ -102,6 +106,7 @@ def test_add_user_to_list():
     assert response_data["message"] == "User added to list successfully"
     list_data = response_data["data"]
     assert user_to_add_internal_id in list_data["user_id_list"]
+    assert list_data["destination_address"] == "456 Oak Ave"
 
 def test_remove_user_from_list():
     # Arrange
@@ -116,7 +121,7 @@ def test_remove_user_from_list():
     create_global_role(user_to_remove_external_id, user_to_remove_internal_id, 'worker')
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_payload = {"list_create": {"name": "Remove User Test List", "destination_address": "789 Pine Rd"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
@@ -133,6 +138,7 @@ def test_remove_user_from_list():
     assert response_data["message"] == "User removed from list successfully"
     list_data = response_data["data"]
     assert user_to_remove_internal_id not in list_data["user_id_list"]
+    assert list_data["destination_address"] == "789 Pine Rd"
 
 def test_remove_user_from_list_not_found():
     # Arrange
@@ -147,7 +153,7 @@ def test_remove_user_from_list_not_found():
     create_global_role(user_to_remove_external_id, user_to_remove_internal_id, 'worker')
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_payload = {"list_create": {"name": "Remove User Test List", "destination_address": "101 Elm St"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
@@ -181,7 +187,7 @@ def test_remove_user_from_list_unauthorized():
 
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_payload = {"list_create": {"name": "Remove User Test List", "destination_address": "222 Birch Ln"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
@@ -219,7 +225,7 @@ def test_remove_creator_from_list_unauthorized():
 
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "Remove User Test List"}, "items": None}
+    list_payload = {"list_create": {"name": "Remove User Test List", "destination_address": "333 Cedar Dr"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
@@ -242,11 +248,12 @@ def test_get_all_lists():
     # Arrange
     global_role_types = ["client", "worker"]
     list_name = "Valid Test List"
+    destination_address_base = "Address "
     several_external_user_id: list = []
     several_internal_user_id: list = []
     several_list_id: list = []
 
-    for global_role_type in global_role_types:
+    for i, global_role_type in enumerate(global_role_types):
         # 1. Create user and get IDs
         external_user_id = generate_external_userid()
         user_data = login_or_create_user(external_user_id)
@@ -263,7 +270,8 @@ def test_get_all_lists():
         }
         payload = {
             "list_create": {
-                "name": list_name
+                "name": list_name,
+                "destination_address": destination_address_base + str(i)
             },
             "items": None
         }
@@ -297,11 +305,15 @@ def test_get_all_lists():
     list_data = response_data["data"]
     assert user_internal_id in list_data[0]["user_id_list"]
     assert len(list_data) == 2
+    assert list_data[0]["destination_address"] == destination_address_base + "0"
+    assert list_data[1]["destination_address"] == destination_address_base + "1"
+
 
 def test_get_list():
     # Arrange
     global_role_type = "client"
     list_name = "Valid Test List"
+    destination_address = "444 Pine St"
     # 1. Create user and get IDs
     external_user_id = generate_external_userid()
     user_data = login_or_create_user(external_user_id)
@@ -316,7 +328,8 @@ def test_get_list():
     }
     payload = {
         "list_create": {
-            "name": list_name
+            "name": list_name,
+            "destination_address": destination_address
         },
         "items": None
     }
@@ -336,6 +349,7 @@ def test_get_list():
     assert user_internal_id in list_data["user_id_list"]
     assert user_internal_id == list_data["creator_id"]
     assert list_id == list_data["id"]
+    assert list_data["destination_address"] == destination_address
 
 def test_update_list_name_successfully():
     # Arrange
@@ -345,13 +359,14 @@ def test_update_list_name_successfully():
     create_global_role(creator_external_id, creator_internal_id, 'client')
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "Original Name"}, "items": None}
+    list_payload = {"list_create": {"name": "Original Name", "destination_address": "555 Gold Rd"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
     # Act
     updated_name = "Updated Name"
-    update_payload = {"name": updated_name}
+    updated_destination_address = "666 Silver Ave"
+    update_payload = {"name": updated_name, "destination_address": updated_destination_address}
     response = requests.put(f"{BASE_URL}/lists/{list_id}", headers=headers, json=update_payload)
 
     # Assert
@@ -360,6 +375,7 @@ def test_update_list_name_successfully():
     assert response_data["message"] == "List updated successfully"
     list_data = response_data["data"]
     assert list_data["name"] == updated_name
+    assert list_data["destination_address"] == updated_destination_address
 
 def test_update_list_unauthorized():
     # Arrange
@@ -374,13 +390,13 @@ def test_update_list_unauthorized():
     create_global_role(unauthorized_external_id, unauthorized_internal_id, 'client')
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "Original Name"}, "items": None}
+    list_payload = {"list_create": {"name": "Original Name", "destination_address": "777 Bronze Ln"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
     # Act
     unauthorized_headers = {"Content-Type": "application/json", "X-User-ID": unauthorized_external_id}
-    update_payload = {"name": "Updated Name"}
+    update_payload = {"name": "Updated Name", "destination_address": "888 Copper Dr"}
     response = requests.put(f"{BASE_URL}/lists/{list_id}", headers=unauthorized_headers, json=update_payload)
 
     # Assert
@@ -399,7 +415,7 @@ def test_update_list_not_found():
     non_existent_list_id = 999999
 
     # Act
-    update_payload = {"name": "Updated Name"}
+    update_payload = {"name": "Updated Name", "destination_address": "999 Iron St"}
     response = requests.put(f"{BASE_URL}/lists/{non_existent_list_id}", headers=headers, json=update_payload)
 
     # Assert
@@ -415,7 +431,7 @@ def test_delete_list_successfully():
     create_global_role(creator_external_id, creator_internal_id, 'client')
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "List to be deleted"}, "items": None}
+    list_payload = {"list_create": {"name": "List to be deleted", "destination_address": "111 Tin Ave"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 
@@ -444,7 +460,7 @@ def test_delete_list_unauthorized():
     create_global_role(unauthorized_external_id, unauthorized_internal_id, 'client')
 
     headers = {"Content-Type": "application/json", "X-User-ID": creator_external_id}
-    list_payload = {"list_create": {"name": "List to be deleted"}, "items": None}
+    list_payload = {"list_create": {"name": "List to be deleted", "destination_address": "222 Lead Rd"}, "items": None}
     list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
     list_id = list_response.json()["data"]["id"]
 

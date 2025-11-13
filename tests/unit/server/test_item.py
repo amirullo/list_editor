@@ -51,6 +51,9 @@ def test_create_item_successfully(item_service, mock_item_repository, mock_list_
         quantity=1,
         created_at=current_time,
         updated_at=current_time,
+        approved=0,
+        bought=0,
+        delivered=0,
     )
 
     # Act
@@ -68,6 +71,9 @@ def test_create_item_successfully(item_service, mock_item_repository, mock_list_
     assert created_item.quantity == 1
     assert created_item.created_at == current_time
     assert created_item.updated_at == current_time
+    assert created_item.approved == 0
+    assert created_item.bought == 0
+    assert created_item.delivered == 0
 
 def test_create_item_no_access_to_list(item_service, mock_list_role_service):
     # Arrange
@@ -111,7 +117,10 @@ def test_get_item_successfully(item_service, mock_item_repository, mock_list_rol
         description="Description of retrieved item",
         quantity=1,
         created_at=current_time,
-        updated_at=current_time
+        updated_at=current_time,
+        approved=0,
+        bought=0,
+        delivered=0
     )
     
     mock_list_role_service.user_has_access_to_list.return_value = True
@@ -130,6 +139,9 @@ def test_get_item_successfully(item_service, mock_item_repository, mock_list_rol
     assert retrieved_item.description == expected_item.description
     assert retrieved_item.list_id == expected_item.list_id
     assert retrieved_item.quantity == 1
+    assert retrieved_item.approved == 0
+    assert retrieved_item.bought == 0
+    assert retrieved_item.delivered == 0
 
 def test_get_item_no_access_to_list(item_service, mock_list_role_service):
     # Arrange
