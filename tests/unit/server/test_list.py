@@ -52,6 +52,7 @@ class TestListService:
         client_external_id = "client_user_get"
         worker_external_id = "worker_user_get"
         list_name = "Test Get List"
+        destination_address = "123 Main St, Anytown"
 
         # Create data in the test database
         user_client = user_service.get_user_by_external_id(client_external_id)
@@ -66,7 +67,7 @@ class TestListService:
         global_role_service.assign_worker_role(user_worker.id)
 
         # Use list_service to create the list
-        list_create_data = ListCreate(name=list_name)
+        list_create_data = ListCreate(name=list_name, destination_address=destination_address)
         created_list = list_service.create_list(list_create=list_create_data, user_internal_id=user_client.id)
         list_id = created_list.id
 
@@ -81,6 +82,7 @@ class TestListService:
         assert isinstance(result, ListInDB)
         assert result.id == list_id
         assert result.name == list_name
+        assert result.destination_address == destination_address
         assert result.creator_id == user_client.id
         assert user_client.id in result.user_id_list
         assert user_worker.id in result.user_id_list
@@ -114,6 +116,7 @@ class TestListService:
         )
 
         list_name = "Test Create List Service"
+        destination_address = "456 Oak Ave, Otherville"
         external_id = "creator_user_create"
 
         # Act
@@ -121,7 +124,7 @@ class TestListService:
         if not user:
             user = user_service.create_user(external_id=external_id)
         global_role_service.assign_client_role(user.id)
-        list_create_data = ListCreate(name=list_name)
+        list_create_data = ListCreate(name=list_name, destination_address=destination_address)
         create_result = list_service.create_list(list_create=list_create_data,
                                                  user_internal_id=user.id
                                                  )
@@ -133,6 +136,7 @@ class TestListService:
         assert isinstance(create_result, ListInDB)
         assert create_result.id == get_result.id
         assert get_result.name == list_name
+        assert get_result.destination_address == destination_address
         assert get_result.creator_id == user.id
         assert user.id in get_result.user_id_list
 
@@ -160,6 +164,7 @@ class TestListService:
         )
 
         list_name = "Test Add User To List"
+        destination_address = "789 Pine Rd, Villageton"
         creator_external_id = "creator_for_add_user_test"
         user_to_add_external_id = "user_to_add_test"
 
@@ -172,7 +177,7 @@ class TestListService:
             user_to_add = user_service.create_user(external_id=user_to_add_external_id)
 
         # Create list
-        list_create_data = ListCreate(name=list_name)
+        list_create_data = ListCreate(name=list_name, destination_address=destination_address)
         created_list = list_service.create_list(list_create=list_create_data,
                                                  user_internal_id=creator.id
                                                  )
@@ -186,6 +191,7 @@ class TestListService:
         # Assert
         assert isinstance(updated_list, ListInDB)
         assert created_list.id == updated_list.id
+        assert updated_list.destination_address == destination_address
         assert user_to_add.id in updated_list.user_id_list
         assert creator.id in updated_list.user_id_list
 
@@ -213,6 +219,7 @@ class TestListService:
         )
 
         list_name = "Test Remove User From List"
+        destination_address = "101 Elm St, Hamlet"
         creator_external_id = "creator_for_remove_user_test"
         user_to_remove_external_id = "user_to_remove_test"
 
@@ -225,7 +232,7 @@ class TestListService:
             user_to_remove = user_service.create_user(external_id=user_to_remove_external_id)
 
         # Create list
-        list_create_data = ListCreate(name=list_name)
+        list_create_data = ListCreate(name=list_name, destination_address=destination_address)
         created_list = list_service.create_list(list_create=list_create_data,
                                                  user_internal_id=creator.id
                                                  )
@@ -245,6 +252,7 @@ class TestListService:
         # Assert
         assert isinstance(updated_list, ListInDB)
         assert created_list.id == updated_list.id
+        assert updated_list.destination_address == destination_address
         assert user_to_remove.id not in updated_list.user_id_list
         assert creator.id in updated_list.user_id_list
 
@@ -273,6 +281,8 @@ class TestListService:
         )
 
         list_name = "Test Add User To List"
+        destination_address1 = "222 Maple Ave, Townsville"
+        destination_address2 = "333 Birch Ln, Cityburg"
         creator_external_id = str(uuid.uuid4())
         user_to_add_external_id = str(uuid.uuid4())
 
@@ -288,13 +298,13 @@ class TestListService:
         global_role_service.assign_worker_role(user_to_add.id)
 
         # Create list
-        list_create_data = ListCreate(name=list_name)
-        created_list1 = list_service.create_list(list_create=list_create_data,
+        list_create_data1 = ListCreate(name=list_name, destination_address=destination_address1)
+        created_list1 = list_service.create_list(list_create=list_create_data1,
                                                 user_internal_id=creator.id
                                                 )
 
-        list_create_data = ListCreate(name=list_name)
-        created_list2 = list_service.create_list(list_create=list_create_data,
+        list_create_data2 = ListCreate(name=list_name, destination_address=destination_address2)
+        created_list2 = list_service.create_list(list_create=list_create_data2,
                                                 user_internal_id=user_to_add.id
                                                 )
 
@@ -307,6 +317,10 @@ class TestListService:
         assert len(result) == 2
         for mylist in result:
             assert isinstance(mylist, ListInDB)
+            if mylist.id == created_list1.id:
+                assert mylist.destination_address == destination_address1
+            elif mylist.id == created_list2.id:
+                assert mylist.destination_address == destination_address2
         assert created_list1.id in [x.id for x in result]
         assert creator.id in [x.creator_id for x in result]
         assert user_to_add.id in [x.creator_id for x in result]

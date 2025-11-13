@@ -11,6 +11,7 @@ class List(BaseModel):
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    destination_address = Column(String, nullable=True)
     
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
     list_users = relationship("ListUser", back_populates="list", cascade="all, delete-orphan")

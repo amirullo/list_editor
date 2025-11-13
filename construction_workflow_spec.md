@@ -2,19 +2,19 @@
 
 ## List
 
-- Total price  
-- Delivery period (total)  
-- Items  
+- Total price - function  
+- Delivery period (total) - function  
+- Items summary  
   - Names  
   - Quantity  
-  - Final price  
+  - Price  
 - Flat address  
 - A Map with stores addresses  
 
 ### Item
 - Develop key features:
   - Parse link:
-    - Photo  
+    - Photo (link)  
     - Price  
     - Delivery price  
     - Delivery period  

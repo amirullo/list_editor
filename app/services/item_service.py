@@ -117,6 +117,15 @@ class ItemService:
         
         if 'quantity' in update_data and global_role_type != GlobalRoleType.WORKER:
             restricted_fields.append('quantity (requires WORKER global role)')
+
+        if 'approved' in update_data and global_role_type != GlobalRoleType.WORKER:
+            restricted_fields.append('approved (requires WORKER global role)')
+
+        if 'bought' in update_data and global_role_type != GlobalRoleType.CLIENT:
+            restricted_fields.append('bought (requires CLIENT global role)')
+
+        if 'delivered' in update_data and global_role_type != GlobalRoleType.WORKER:
+            restricted_fields.append('delivered (requires WORKER global role)')
         
         if restricted_fields:
             raise ForbiddenException(f"Additional global role restrictions: {', '.join(restricted_fields)}")
