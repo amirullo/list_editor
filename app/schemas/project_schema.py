@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from .step_schema import Step
@@ -23,7 +23,6 @@ class Project(ProjectBase):
     id: int
     steps: List['Step'] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-Project.update_forward_refs()
+Project.model_rebuild()
