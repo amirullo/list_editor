@@ -38,9 +38,9 @@ List Editor is a collaborative list management system designed for teams and ind
 -  **Store Information**: Items can be associated with a store, including its address and distance.
 -  **Item Status**: Items have flags for "approved" (worker), "bought" (client/worker), and "delivered" (worker).
 
-#### Construction Workflow
-- **Process Management**: Define a construction process with a name, planned and actual periods, total material and worker prices, and a place description.
-- **Step Management**: Break down a process into steps, each with a name, planned and actual periods, material and worker prices, required items, and photos/videos of the results. Steps can have a parent step.
+#### Project Management
+- **Project Management**: Define a project with a name, planned and actual periods, total material and worker prices, and a place description.
+- **Step Management**: Break down a project into steps, each with a name, planned and actual periods, material and worker prices, required items, and photos/videos of the results. Steps can have a parent step.
 - **Gantt Chart**: Visualize the project timeline with a Gantt diagram.
 
 #### Collaboration Features
@@ -191,7 +191,9 @@ list_editor/
 │   │       ├── list_endpoints.py
 │   │       ├── user_endpoints.py
 │   │       ├── role_endpoints.py
-│   │       └── sync_endpoints.py
+│   │       ├── sync_endpoints.py
+│   │       ├── project_endpoints.py
+│   │       └── step_endpoints.py
 │   │
 │   ├── core/                   # Core configuration and setup
 │   │   ├── __init__.py
@@ -208,7 +210,9 @@ list_editor/
 │   │   ├── lock_model.py       # Lock entity model
 │   │   ├── global_role_model.py # Global Role entity model
 │   │   ├── list_role_model.py  # List Role entity model
-│   │   └── list_user_model.py  # List-User association model
+│   │   ├── list_user_model.py  # List-User association model
+│   │   ├── project_model.py    # Project entity model
+│   │   └── step_model.py       # Step entity model
 │   │
 │   ├── repositories/           # Data access layer
 │   │   ├── __init__.py
@@ -216,7 +220,9 @@ list_editor/
 │   │   ├── list_repository.py  # List-specific data operations
 │   │   ├── item_repository.py  # Item-specific data operations
 │   │   ├── user_repository.py  # User-specific data operations
-│   │   └── role_repository.py  # Role-specific data operations
+│   │   ├── role_repository.py  # Role-specific data operations
+│   │   ├── project_repository.py # Project-specific data operations
+│   │   └── step_repository.py    # Step-specific data operations
 │   │
 │   ├── schemas/                # Pydantic schemas for validation
 │   │   ├── __init__.py
@@ -224,7 +230,9 @@ list_editor/
 │   │   ├── item_schema.py      # Item request/response schemas
 │   │   ├── user_schema.py      # User request/response schemas
 │   │   ├── role_schema.py      # Role request/response schemas
-│   │   └── response_schema.py  # Generic response schemas
+│   │   ├── response_schema.py  # Generic response schemas
+│   │   ├── project_schema.py   # Project request/response schemas
+│   │   └── step_schema.py      # Step request/response schemas
 │   │
 │   ├── services/               # Business logic layer
 │   │   ├── __init__.py
@@ -232,7 +240,9 @@ list_editor/
 │   │   ├── item_service.py     # Item business logic
 │   │   ├── role_service.py     # Role business logic
 │   │   ├── lock_service.py     # Concurrency control
-│   │   └── notification_service.py
+│   │   ├── notification_service.py
+│   │   ├── project_service.py  # Project business logic
+│   │   └── step_service.py     # Step business logic
 │   │
 │   └── utils/                  # Utility functions and helpers
 │       ├── __init__.py
@@ -263,6 +273,20 @@ list_editor/
 - `GET /api/lists/{list_id}/items` - Get all items in list
 - `PUT /api/lists/{list_id}/items/{item_id}` - Update item
 - `DELETE /api/lists/{list_id}/items/{item_id}` - Delete item
+
+### Project Management
+- `POST /api/projects/` - Create a new project
+- `GET /api/projects/` - Get all projects
+- `GET /api/projects/{project_id}` - Get specific project details
+- `PUT /api/projects/{project_id}` - Update project information
+- `DELETE /api/projects/{project_id}` - Delete project
+
+### Step Management
+- `POST /api/steps/` - Create a new step
+- `GET /api/steps/` - Get all steps
+- `GET /api/steps/{step_id}` - Get specific step details
+- `PUT /api/steps/{step_id}` - Update step information
+- `DELETE /api/steps/{step_id}` - Delete step
 
 ### Locking System
 - `POST /api/lists/{list_id}/lock` - Acquire lock on list
@@ -299,6 +323,29 @@ list_editor/
 - category: String (optional)
 - list_id: Foreign key to List
 
+### Project
+- id: Integer primary key
+- name: String (required)
+- place_description: String (optional)
+- planned_start_date: Timestamp (optional)
+- planned_end_date: Timestamp (optional)
+- actual_start_date: Timestamp (optional)
+- actual_end_date: Timestamp (optional)
+- total_materials_price: Float (optional)
+- total_workers_price: Float (optional)
+
+### Step
+- id: Integer primary key
+- name: String (required)
+- planned_start_date: Timestamp (optional)
+- planned_end_date: Timestamp (optional)
+- actual_start_date: Timestamp (optional)
+- actual_end_date: Timestamp (optional)
+- materials_price: Float (optional)
+- workers_price: Float (optional)
+- project_id: Foreign key to Project
+- parent_step_id: Foreign key to Step (self-referencing)
+
 ### ListUser (Association)
 - list_id: Foreign key to List
 - user_id: Foreign key to User (internal ID)
@@ -331,6 +378,8 @@ list_editor/
    ```
 ### Common HTTP status codes:
 - 200: Success
+- 201: Created
+- 204: No Content
 - 400: Bad Request (validation errors)
 - 401: Unauthorized (missing/invalid user ID)
 - 403: Forbidden (insufficient permissions)
@@ -354,3 +403,47 @@ list_editor/
 - CREATOR + WORKER: Can do everything including change quantity, but NOT price  
 - USER + CLIENT: Can modify the list and its items, including price, but NOT quantity
 - USER + WORKER: Can modify the list and its items, including quantity, but NOT price
+
+## Business workflow
+
+### A potential workflow:  
+1. Project Planning: user defines project by creating a Project and breaking it down into hierarchical Steps. Each Step would have a description of the materials needed.
+2. Material Aggregation: You create one or more Lists (e.g., "Hardware Store List," "Online Plumbing Orders") to gather all the Items required across all your Steps.
+3. Collaborative Purchasing: You use the List entity's collaboration features to manage the purchasing process. A CLIENT can approve prices, and a WORKER can update quantities and mark items as "bought" or "delivered."
+4. Work Execution: Once the Items for a Step are marked as "delivered" in your List, the work on that Step can commence.  
+
+This approach creates a clear separation of concerns:
+•Project / Step: Manages the work and schedule.
+•List / Item: Manages the materials and procurement.
+
+On front-end there would be a project of maintenance. That would consist of many steps of maintenance. there are steps that could be paralleled, or be in sequence. there are several abstractions of steps.
+List entity is used as the "shopping cart" for maintenance project. The Step entity defines what work needs to be done, and the List entity helps manage the acquisition of materials (Items) needed for that work.
+
+For example: 
+- Project1:  
+  - room1->walls clearing->walls coloring,  
+  - room2->floors and walls clearing->floors clearing->new floors  
+  - room2->floors and walls clearing->walls clearing->walls coloring  
+
+But I don't want some tricky and hard to understand and hard to use app for final users.
+More formal front-end would be something like this:  
+
+- Project  
+  - Steps:  
+    - Name  
+    - Price (workers)  
+    - Price (materials)  
+    - Period plan  
+    - Period fact  
+    - Items needed + quantity  
+    - Photo/video of results  
+    - Parent step (only one parent step)  
+  - Summary  
+    - Name  
+    - Gantt diagram  
+    - Period plan (full)  
+    - Period fact (full)  
+    - Price (materials full)  
+    - Price (workers full)  
+    - Place description  
+    - Steps  

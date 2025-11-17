@@ -1,3 +1,22 @@
+--truncate table users CASCADE;
+--truncate table lists CASCADE;
+--
+--truncate table global_roles CASCADE;
+--truncate table list_users CASCADE;
+--truncate table items CASCADE;
+
+
+drop table users CASCADE;
+drop table global_roles CASCADE;
+drop table list_users CASCADE;
+drop table lists CASCADE;
+drop table items CASCADE;
+drop table list_roles   CASCADE;
+drop table locks  CASCADE;
+DROP TYPE public.globalroletype;
+DROP TYPE public.listroletype;
+
+
 --
 -- PostgreSQL database dump
 --
@@ -312,6 +331,80 @@ ALTER TABLE public.list_roles_id_seq OWNER TO dev;
 ALTER SEQUENCE public.list_roles_id_seq OWNED BY public.list_roles.id;
 
 --
+-- Name: projects; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.projects (
+    id integer NOT NULL,
+    name character varying NOT NULL,
+    place_description character varying,
+    planned_start_date timestamp with time zone,
+    planned_end_date timestamp with time zone,
+    actual_start_date timestamp with time zone,
+    actual_end_date timestamp with time zone,
+    total_materials_price double precision,
+    total_workers_price double precision,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone
+);
+
+ALTER TABLE public.projects OWNER TO dev;
+
+--
+-- Name: projects_id_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+CREATE SEQUENCE public.projects_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER TABLE public.projects_id_seq OWNER TO dev;
+
+ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
+
+--
+-- Name: steps; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.steps (
+    id integer NOT NULL,
+    name character varying NOT NULL,
+    planned_start_date timestamp with time zone,
+    planned_end_date timestamp with time zone,
+    actual_start_date timestamp with time zone,
+    actual_end_date timestamp with time zone,
+    materials_price double precision,
+    workers_price double precision,
+    project_id integer NOT NULL,
+    parent_step_id integer,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone
+);
+
+ALTER TABLE public.steps OWNER TO dev;
+
+--
+-- Name: steps_id_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+CREATE SEQUENCE public.steps_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER TABLE public.steps_id_seq OWNER TO dev;
+
+ALTER SEQUENCE public.steps_id_seq OWNED BY public.steps.id;
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: dev
 --
 
@@ -356,6 +449,18 @@ ALTER TABLE ONLY public.locks ALTER COLUMN id SET DEFAULT nextval('public.locks_
 --
 
 ALTER TABLE ONLY public.list_roles ALTER COLUMN id SET DEFAULT nextval('public.list_roles_id_seq'::regclass);
+
+--
+-- Name: projects id; Type: DEFAULT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.projects_id_seq'::regclass);
+
+--
+-- Name: steps id; Type: DEFAULT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.steps ALTER COLUMN id SET DEFAULT nextval('public.steps_id_seq'::regclass);
 
 --
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
@@ -447,6 +552,20 @@ ALTER TABLE ONLY public.list_roles
     ADD CONSTRAINT list_roles_role_type_key UNIQUE (role_type);
 
 --
+-- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_pkey PRIMARY KEY (id);
+
+--
+-- Name: steps steps_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.steps
+    ADD CONSTRAINT steps_pkey PRIMARY KEY (id);
+
+--
 -- Name: ix_users_id; Type: INDEX; Schema: public; Owner: dev
 --
 
@@ -476,6 +595,18 @@ CREATE INDEX ix_locks_id ON public.locks USING btree (id);
 --
 
 CREATE INDEX ix_list_roles_id ON public.list_roles USING btree (id);
+
+--
+-- Name: ix_projects_id; Type: INDEX; Schema: public; Owner: dev
+--
+
+CREATE INDEX ix_projects_id ON public.projects USING btree (id);
+
+--
+-- Name: ix_steps_id; Type: INDEX; Schema: public; Owner: dev
+--
+
+CREATE INDEX ix_steps_id ON public.steps USING btree (id);
 
 --
 -- Name: global_roles global_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
@@ -522,6 +653,20 @@ ALTER TABLE ONLY public.locks
 
 ALTER TABLE ONLY public.locks
     ADD CONSTRAINT locks_holder_id_fkey FOREIGN KEY (holder_id) REFERENCES public.users(id);
+
+--
+-- Name: steps steps_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.steps
+    ADD CONSTRAINT steps_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+--
+-- Name: steps steps_parent_step_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.steps
+    ADD CONSTRAINT steps_parent_step_id_fkey FOREIGN KEY (parent_step_id) REFERENCES public.steps(id);
 
 --
 -- Data for Name: list_roles; Type: TABLE DATA; Schema: public; Owner: dev
