@@ -265,7 +265,8 @@ CREATE TABLE public.locks (
     id integer NOT NULL,
     list_id integer NOT NULL,
     holder_id integer NOT NULL,
-    acquired_at timestamp with time zone DEFAULT now() NOT NULL,
+--    acquired_at timestamp with time zone DEFAULT now() NOT NULL,
+    acquired_at timestamp without time zone DEFAULT now() NOT NULL,
     created_at timestamp without time zone,
     updated_at timestamp without time zone
 );

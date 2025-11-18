@@ -23,7 +23,8 @@ def db_session() -> Session:
     session = Session(bind=connection)
     yield session
     session.close()
-    transaction.rollback()
+    transaction.commit()
+
     connection.close()
 
 @pytest.fixture(scope="function")
