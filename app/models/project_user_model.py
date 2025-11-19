@@ -12,7 +12,7 @@ class ProjectUser(BaseModel):
     __tablename__ = "project_users"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.internal_id'), nullable=False)
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
     role_type = Column(Enum(ProjectRoleType), nullable=False)
     created_at = Column(DateTime, default=func.now())

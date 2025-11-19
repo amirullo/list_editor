@@ -16,6 +16,8 @@ from app.repositories.item_repository import ItemRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.project_repository import ProjectRepository
 from typing import Optional
+# from uuid import UUID # Removed UUID import as internal_id is int
+from app.utils.logger import logger # Import logger
 
 def get_external_user_id(user_external_id: str = Header(..., alias="X-User-ID")) -> str:
     if not user_external_id:
@@ -31,11 +33,12 @@ def get_user_service(user_repo: UserRepository = Depends(get_user_repository)) -
 def get_current_user_id(
     user_external_id: str = Depends(get_external_user_id),
     user_service: UserService = Depends(get_user_service)
-) -> int:
-    user = user_service.get_user_by_external_id(user_external_id)
+) -> int: # Changed return type to int
+    user = user_service.get_or_create_user_by_external_id(user_external_id) # Use get_or_create
     if not user:
         raise HTTPException(status_code=401, detail="User not found or not authorized")
-    return user.id
+    logger.info(f"get_current_user_id: Returning internal_id {user.internal_id} for external_user_id {user_external_id}")
+    return user.internal_id # Return internal_id
 
 def get_global_role_repository(db: Session = Depends(get_db)) -> GlobalRoleRepository:
     return GlobalRoleRepository(db)
@@ -69,13 +72,15 @@ def get_item_service(
     db: Session = Depends(get_db),
     item_repo: ItemRepository = Depends(get_item_repository),
     list_repo: ListRepository = Depends(get_list_repository),
-    project_repo: ProjectRepository = Depends(get_project_repository) # Add project_repo dependency
+    project_repo: ProjectRepository = Depends(get_project_repository), # Add project_repo dependency
+    global_role_service: GlobalRoleService = Depends(get_global_role_service) # Inject GlobalRoleService
 ) -> ItemService:
     return ItemService(
         db=db,
         item_repository=item_repo,
         list_repository=list_repo,
-        project_repository=project_repo # Pass project_repository
+        project_repository=project_repo, # Pass project_repository
+        global_role_service=global_role_service # Pass GlobalRoleService
     )
 
 def get_list_service(
@@ -93,7 +98,7 @@ def get_list_service(
     )
 
 def get_user_global_role(
-    user_internal_id: int = Depends(get_current_user_id),
+    user_internal_id: int = Depends(get_current_user_id), # Changed type to int
     global_role_service: GlobalRoleService = Depends(get_global_role_service)
 ) -> GlobalRoleType:
     role = global_role_service.get_role(user_internal_id)
@@ -103,7 +108,7 @@ def get_user_global_role(
 
 def require_project_access(
     project_id: int,
-    user_internal_id: int = Depends(get_current_user_id),
+    user_internal_id: int = Depends(get_current_user_id), # Changed type to int
     project_repo: ProjectRepository = Depends(get_project_repository)
 ) -> None:
     project = project_repo.get_by_id_for_user(project_id, user_internal_id)

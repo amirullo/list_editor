@@ -8,7 +8,7 @@ import json
 import time
 
 from app.api.endpoints import router as api_router
-from app.api.endpoints import project_endpoints, step_endpoints
+from app.api.endpoints import project_endpoints, step_endpoints, role_endpoints # Import role_endpoints
 from app.core.config import settings
 from app.utils.logger import logger
 from app.core.db import engine, get_db, initialize_database
@@ -67,6 +67,7 @@ app.add_exception_handler(Exception, generic_exception_handler)
 app.include_router(api_router, prefix="/api")
 app.include_router(project_endpoints.router, prefix="/api/projects", tags=["projects"])
 app.include_router(step_endpoints.router, prefix="/api/steps", tags=["steps"])
+app.include_router(role_endpoints.router, prefix="/api", tags=["roles"]) # Include role_endpoints
 
 @app.get("/")
 def read_root():

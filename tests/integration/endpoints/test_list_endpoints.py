@@ -8,11 +8,11 @@ BASE_URL = "http://localhost:8000/api"
 def generate_external_userid():
     return str(uuid.uuid4())
 
-def login_or_create_user(external_user_id: str):
+def login_or_create_user(external_user_id: str) -> int:
     headers = {"X-User-ID": external_user_id}
     response = requests.post(f"{BASE_URL}/users/login", headers=headers)
     response.raise_for_status()
-    return response.json()
+    return response.json()["internal_id"]
 
 def create_project(external_user_id: str, project_name: str):
     headers = {
@@ -26,10 +26,25 @@ def create_project(external_user_id: str, project_name: str):
     response.raise_for_status()
     return response.json()
 
+def create_list(external_user_id: str, project_id: int, list_name: str):
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": external_user_id
+    }
+    payload = {
+        "list_create": {
+            "name": list_name,
+            "project_id": project_id
+        }
+    }
+    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
+
 def test_create_list_with_valid_data_no_items():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project")
     project_id = project_data["data"]["id"]
     list_name = "Valid Test List"
@@ -76,7 +91,7 @@ def test_create_list_with_valid_data_no_items():
 def test_get_all_lists_for_project():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project for Lists")
     project_id = project_data["data"]["id"]
 
@@ -106,7 +121,7 @@ def test_get_all_lists_for_project():
 def test_get_list():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project")
     project_id = project_data["data"]["id"]
     list_name = "My Test List"
@@ -143,7 +158,7 @@ def test_get_list():
 def test_update_list_name_successfully():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project")
     project_id = project_data["data"]["id"]
 
@@ -179,7 +194,7 @@ def test_update_list_name_successfully():
 def test_delete_list_successfully():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project")
     project_id = project_data["data"]["id"]
 

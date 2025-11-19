@@ -57,19 +57,19 @@ class TestListService:
 
         # Create project with client as creator
         project_create_data = ProjectCreate(name=project_name)
-        created_project = project_service.create_project(project_create_data, user_client.id)
+        created_project = project_service.create_project(project_create_data, user_client.internal_id)
         project_id = created_project.id
 
         # Add worker to the project
-        project_service.add_user_to_project(project_id, worker_external_id, user_client.id)
+        project_service.add_user_to_project(project_id, worker_external_id, user_client.internal_id)
 
         # Use list_service to create the list within the project
         list_create_data = ListCreate(name=list_name, destination_address=destination_address, project_id=project_id)
-        created_list = list_service.create_list(list_create=list_create_data, user_internal_id=user_client.id)
+        created_list = list_service.create_list(list_create=list_create_data, user_internal_id=user_client.internal_id)
         list_id = created_list.id
 
         # Act
-        result = list_service.get_list(list_id=list_id, user_internal_id=user_client.id)
+        result = list_service.get_list(list_id=list_id, user_internal_id=user_client.internal_id)
 
         # Assert
         assert isinstance(result, ListInDB)
@@ -79,7 +79,7 @@ class TestListService:
         assert result.project_id == project_id
 
         # Verify worker can also access the list (inherits from project)
-        worker_access_result = list_service.get_list(list_id=list_id, user_internal_id=user_worker.id)
+        worker_access_result = list_service.get_list(list_id=list_id, user_internal_id=user_worker.internal_id)
         assert worker_access_result.id == list_id
 
     def test_create_list_service_level_integration(
@@ -111,14 +111,14 @@ class TestListService:
         
         # Create project
         project_create_data = ProjectCreate(name=project_name)
-        created_project = project_service.create_project(project_create_data, user.id)
+        created_project = project_service.create_project(project_create_data, user.internal_id)
         project_id = created_project.id
 
         # Act
         list_create_data = ListCreate(name=list_name, destination_address=destination_address, project_id=project_id)
-        create_result = list_service.create_list(list_create=list_create_data, user_internal_id=user.id)
+        create_result = list_service.create_list(list_create=list_create_data, user_internal_id=user.internal_id)
         
-        get_result = list_service.get_list(list_id=create_result.id, user_internal_id=user.id)
+        get_result = list_service.get_list(list_id=create_result.id, user_internal_id=user.internal_id)
 
         # Assert
         assert isinstance(create_result, ListInDB)
@@ -156,18 +156,18 @@ class TestListService:
 
         # Create project
         project_create_data = ProjectCreate(name="Project for All Lists Test")
-        created_project = project_service.create_project(project_create_data, creator.id)
+        created_project = project_service.create_project(project_create_data, creator.internal_id)
         project_id = created_project.id
 
         # Create lists within the project
         list_create_data1 = ListCreate(name="List One", destination_address=destination_address1, project_id=project_id)
-        created_list1 = list_service.create_list(list_create=list_create_data1, user_internal_id=creator.id)
+        created_list1 = list_service.create_list(list_create=list_create_data1, user_internal_id=creator.internal_id)
 
         list_create_data2 = ListCreate(name="List Two", destination_address=destination_address2, project_id=project_id)
-        created_list2 = list_service.create_list(list_create=list_create_data2, user_internal_id=creator.id)
+        created_list2 = list_service.create_list(list_create=list_create_data2, user_internal_id=creator.internal_id)
 
         # Act
-        result = list_service.get_all_lists_for_project(project_id=project_id, user_internal_id=creator.id)
+        result = list_service.get_all_lists_for_project(project_id=project_id, user_internal_id=creator.internal_id)
         
         # Assert
         assert len(result) == 2

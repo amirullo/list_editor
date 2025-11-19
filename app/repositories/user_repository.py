@@ -1,4 +1,4 @@
-
+import uuid
 from sqlalchemy.orm import Session
 from typing import Optional
 from .base_repository import BaseRepository
@@ -25,5 +25,5 @@ class UserRepository(BaseRepository[User]):
             user = self.create(UserCreate(external_id=external_id))
         return user
     
-    def get_by_internal_id(self, internal_id: int) -> Optional[User]:
-        return self.db.query(User).filter(User.id == internal_id).first()
+    def get_by_internal_id(self, internal_id: int) -> Optional[User]: # Changed type hint to int
+        return self.db.query(User).filter(User.internal_id == internal_id).first()

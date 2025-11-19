@@ -10,16 +10,28 @@ BASE_URL = "http://localhost:8000/api"
 def generate_external_userid():
     return str(uuid.uuid4())
 
-def login_or_create_user(external_user_id: str):
+def login_or_create_user(external_user_id: str) -> int:
     headers = {"X-User-ID": external_user_id}
     response = requests.post(f"{BASE_URL}/users/login", headers=headers)
+    response.raise_for_status()
+    return response.json()["internal_id"]
+
+def create_project(external_user_id: str, project_name: str):
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-ID": external_user_id
+    }
+    payload = {
+        "name": project_name
+    }
+    response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=payload)
     response.raise_for_status()
     return response.json()
 
 def test_create_and_get_project():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     project_name = "New Maintenance Project"
     place_description = "Main building, 2nd floor"
 
@@ -60,9 +72,9 @@ def test_create_and_get_project():
 def test_add_and_remove_user_from_project():
     # Arrange
     creator_external_id = generate_external_userid()
-    login_or_create_user(creator_external_id)
+    creator_internal_id = login_or_create_user(creator_external_id)
     user_to_add_external_id = generate_external_userid()
-    login_or_create_user(user_to_add_external_id)
+    user_to_add_internal_id = login_or_create_user(user_to_add_external_id)
 
     headers = {
         "Content-Type": "application/json",
@@ -86,11 +98,11 @@ def test_add_and_remove_user_from_project():
     # Verify user was added to the database
     db = SessionLocal()
     try:
-        user_to_add = db.query(User).filter(User.external_id == user_to_add_external_id).first()
-        assert user_to_add is not None
+        db_user = db.query(User).filter(User.internal_id == user_to_add_internal_id).first()
+        assert db_user is not None
         db_project_user = db.query(ProjectUser).filter(
             ProjectUser.project_id == project_id,
-            ProjectUser.user_id == user_to_add.id
+            ProjectUser.user_id == user_to_add_internal_id
         ).first()
         assert db_project_user is not None
     finally:
@@ -108,11 +120,11 @@ def test_add_and_remove_user_from_project():
     # Verify user was removed from the database
     db = SessionLocal()
     try:
-        user_to_add = db.query(User).filter(User.external_id == user_to_add_external_id).first()
-        assert user_to_add is not None
+        db_user = db.query(User).filter(User.internal_id == user_to_add_internal_id).first()
+        assert db_user is not None
         db_project_user = db.query(ProjectUser).filter(
             ProjectUser.project_id == project_id,
-            ProjectUser.user_id == user_to_add.id
+            ProjectUser.user_id == user_to_add_internal_id
         ).first()
         assert db_project_user is None
     finally:
@@ -121,7 +133,7 @@ def test_add_and_remove_user_from_project():
 def test_get_all_projects_for_user():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"Content-Type": "application/json", "X-User-ID": external_user_id}
     requests.post(f"{BASE_URL}/projects/", headers=headers, json={"name": "Project Alpha"})
     requests.post(f"{BASE_URL}/projects/", headers=headers, json={"name": "Project Beta"})
@@ -141,7 +153,7 @@ def test_get_all_projects_for_user():
 def test_update_project():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"Content-Type": "application/json", "X-User-ID": external_user_id}
     original_data = {"name": "Original Name", "place_description": "Original Description"}
     create_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=original_data)
@@ -169,7 +181,7 @@ def test_update_project():
 def test_delete_project():
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"Content-Type": "application/json", "X-User-ID": external_user_id}
     project_data = {"name": "To Be Deleted"}
     create_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data)

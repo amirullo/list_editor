@@ -13,10 +13,8 @@ class UserService:
     def get_user_by_external_id(self, external_id: str) -> Optional[User]:
         return self.user_repository.get_by_external_id(external_id)
 
-    def create_user(self, external_id: str) -> User:
-        # Create a UserCreate object before passing it to the repository
-        user_create_schema = UserCreate(external_id=external_id)
-        return self.user_repository.create(user_create_schema)
+    def get_or_create_user_by_external_id(self, external_id: str) -> User:
+        return self.user_repository.get_or_create_by_external_id(external_id)
 
-    def get_user_by_id(self, user_id: UUID) -> Optional[User]:
-        return self.user_repository.get_by_id(user_id)
+    def get_user_by_internal_id(self, internal_id: UUID) -> Optional[User]: # Changed type to UUID
+        return self.user_repository.get_by_internal_id(internal_id)

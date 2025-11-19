@@ -12,11 +12,11 @@ BASE_URL = "http://localhost:8000/api"
 def generate_external_userid():
     return str(uuid.uuid4())
 
-def login_or_create_user(external_user_id: str):
+def login_or_create_user(external_user_id: str) -> int:
     headers = {"X-User-ID": external_user_id}
     response = requests.post(f"{BASE_URL}/users/login", headers=headers)
     response.raise_for_status()
-    return response.json()
+    return response.json()["internal_id"]
 
 def test_create_and_get_step(client: TestClient, db_session: Session):
     """
@@ -24,7 +24,7 @@ def test_create_and_get_step(client: TestClient, db_session: Session):
     """
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     # 1. First, create a project to associate the step with
@@ -68,7 +68,7 @@ def test_create_step_nonexistent_project(client: TestClient):
     Test that creating a step with a non-existent project_id returns a 404 Not Found error.
     """
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     step_data = {
@@ -79,19 +79,19 @@ def test_create_step_nonexistent_project(client: TestClient):
     response = client.post("/api/steps/", headers=headers, json=step_data)
     
     assert response.status_code == 404
-    assert response.json()["detail"] == "Project not found"
+    assert response.json()["message"] == "Project not found or you don't have access" # Changed "detail" to "message"
 
 def test_get_nonexistent_step(client: TestClient):
     """
     Test that retrieving a step that does not exist returns a 404 Not Found error.
     """
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     response = client.get(f"/api/steps/99999", headers=headers)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Step not found"
+    assert response.json()["message"] == "Step not found" # Changed "detail" to "message"
 
 def test_get_all_steps(client: TestClient, db_session: Session):
     """
@@ -99,7 +99,7 @@ def test_get_all_steps(client: TestClient, db_session: Session):
     """
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     # 1. Create a project
@@ -133,7 +133,7 @@ def test_update_step(client: TestClient, db_session: Session):
     """
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     # 1. Create a project and a step
@@ -164,12 +164,12 @@ def test_update_nonexistent_step(client: TestClient):
     Test that updating a step that does not exist returns a 404 Not Found error.
     """
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     response = client.put(f"/api/steps/99999", headers=headers, json={"name": "Won't work", "project_id": 1})
     assert response.status_code == 404
-    assert response.json()["detail"] == "Step not found"
+    assert response.json()["message"] == "Step not found" # Changed "detail" to "message"
 
 def test_delete_step(client: TestClient, db_session: Session):
     """
@@ -177,7 +177,7 @@ def test_delete_step(client: TestClient, db_session: Session):
     """
     # Arrange
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     # 1. Create a project and a step
@@ -191,7 +191,7 @@ def test_delete_step(client: TestClient, db_session: Session):
     
     # 2. Delete the step
     delete_response = client.delete(f"/api/steps/{step_id}", headers=headers)
-    assert delete_response.status_code == 200 # Changed from 204 to 200 due to ResponseModel
+    assert delete_response.status_code == 200
 
     # 3. Verify it's gone from the database
     db_step = db_session.query(Step).filter(Step.id == step_id).first()
@@ -206,9 +206,9 @@ def test_delete_nonexistent_step(client: TestClient):
     Test that deleting a step that does not exist returns a 404 Not Found error.
     """
     external_user_id = generate_external_userid()
-    login_or_create_user(external_user_id)
+    internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
     response = client.delete(f"/api/steps/99999", headers=headers)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Step not found"
+    assert response.json()["message"] == "Step not found" # Changed "detail" to "message"

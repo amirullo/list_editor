@@ -7,6 +7,7 @@ from .notification_service import NotificationService
 from app.models.lock_model import Lock
 from app.utils.logger import logger
 from sqlalchemy.orm import Session
+# from uuid import UUID # Import UUID - Removed UUID import as internal_id is int
 
 class LockService:
     def __init__(
@@ -22,7 +23,7 @@ class LockService:
         self.project_repo = project_repo or ProjectRepository(db)
         self.notification_service = NotificationService()
     
-    def _check_project_access(self, list_id: int, user_internal_id: int):
+    def _check_project_access(self, list_id: int, user_internal_id: int): # Changed type to int
         db_list = self.list_repo.get_by_id(list_id)
         if not db_list:
             raise NotFoundException("List not found")
@@ -33,11 +34,11 @@ class LockService:
         
         return db_list
 
-    def acquire_lock(self, list_id: int, user_internal_id: int) -> Optional[Lock]:
+    def acquire_lock(self, list_id: int, user_internal_id: int) -> Optional[Lock]: # Changed type to int
         try:
             self._check_project_access(list_id, user_internal_id)
             
-            lock = self.lock_repo.acquire_lock(list_id, user_internal_id)
+            lock = self.lock_repo.acquire_lock(list_id, user_internal_id) # Pass user_internal_id
             if lock:
                 self.notification_service.notify_lock_acquired(list_id, user_internal_id)
                 logger.info(f"Lock acquired on list {list_id} by user {user_internal_id}")
@@ -51,11 +52,11 @@ class LockService:
             logger.error(f"Unexpected error acquiring lock on list {list_id}: {str(e)}")
             raise LockException(f"Lock acquisition failed: {str(e)}")
 
-    def release_lock(self, list_id: int, user_internal_id: int) -> Dict[str, Any]:
+    def release_lock(self, list_id: int, user_internal_id: int) -> Dict[str, Any]: # Changed type to int
         try:
             self._check_project_access(list_id, user_internal_id)
             
-            success = self.lock_repo.release_lock(list_id, user_internal_id)
+            success = self.lock_repo.release_lock(list_id, user_internal_id) # Pass user_internal_id
             if success:
                 self.notification_service.notify_lock_released(list_id, user_internal_id)
                 logger.info(f"Lock released on list {list_id} by user {user_internal_id}")
@@ -69,7 +70,7 @@ class LockService:
             logger.error(f"Unexpected error releasing lock on list {list_id}: {str(e)}")
             return {"status": "error", "message": f"Lock release failed: {str(e)}"}
 
-    def check_lock(self, list_id: int, user_internal_id: int) -> bool:
+    def check_lock(self, list_id: int, user_internal_id: int) -> bool: # Changed type to int
         try:
             self._check_project_access(list_id, user_internal_id)
             
@@ -78,7 +79,7 @@ class LockService:
             if not current_lock:
                 return True
             
-            if current_lock.holder_id == user_internal_id:
+            if current_lock.holder_id == user_internal_id: # Direct comparison with int
                 return True
             
             return False

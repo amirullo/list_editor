@@ -13,7 +13,7 @@ async def api_exception_handler(request: Request, exc: BaseAPIException):
                  extra={"status_code": exc.status_code, "detail": exc.detail})
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"message": exc.detail}, # Changed 'detail' to 'message'
     )
 
 async def generic_exception_handler(request: Request, exc: Exception):
@@ -25,5 +25,5 @@ async def generic_exception_handler(request: Request, exc: Exception):
                  exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "An internal server error occurred."},
+        content={"message": "An internal server error occurred."}, # Changed 'detail' to 'message'
     )

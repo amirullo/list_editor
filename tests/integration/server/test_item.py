@@ -7,6 +7,7 @@ from app.core.exceptions import NotFoundException, ForbiddenException
 from app.models.item_model import Item
 from app.models.list_model import List
 from app.models.project_model import Project
+from app.services.global_role_service import GlobalRoleService # Import GlobalRoleService
 
 @pytest.fixture
 def mock_item_repository():
@@ -21,12 +22,17 @@ def mock_project_repository():
     return Mock()
 
 @pytest.fixture
-def item_service(mock_item_repository, mock_list_repository, mock_project_repository):
+def mock_global_role_service(): # New fixture for GlobalRoleService
+    return Mock(spec=GlobalRoleService)
+
+@pytest.fixture
+def item_service(mock_item_repository, mock_list_repository, mock_project_repository, mock_global_role_service): # Add mock_global_role_service
     return ItemService(
         db=Mock(),
         item_repository=mock_item_repository,
         list_repository=mock_list_repository,
-        project_repository=mock_project_repository
+        project_repository=mock_project_repository,
+        global_role_service=mock_global_role_service # Pass the mock
     )
 
 def test_create_item_successfully(item_service, mock_item_repository, mock_list_repository, mock_project_repository):
