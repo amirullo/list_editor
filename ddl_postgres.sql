@@ -2,19 +2,21 @@
 --truncate table lists CASCADE;
 --
 --truncate table global_roles CASCADE;
---truncate table list_users CASCADE;
+--truncate table project_users CASCADE;
 --truncate table items CASCADE;
 
 
-drop table users CASCADE;
-drop table global_roles CASCADE;
-drop table list_users CASCADE;
-drop table lists CASCADE;
-drop table items CASCADE;
-drop table list_roles   CASCADE;
-drop table locks  CASCADE;
-DROP TYPE public.globalroletype;
-DROP TYPE public.listroletype;
+drop table IF EXISTS users CASCADE;
+drop table IF EXISTS global_roles CASCADE;
+drop table IF EXISTS project_users CASCADE;
+drop table IF EXISTS lists CASCADE;
+drop table IF EXISTS items CASCADE;
+drop table IF EXISTS project_roles   CASCADE;
+drop table IF EXISTS projects   CASCADE;
+drop table IF EXISTS steps   CASCADE;
+drop table IF EXISTS locks  CASCADE;
+DROP TYPE IF EXISTS public.globalroletype;
+DROP TYPE IF EXISTS public.projectroletype;
 
 
 --
@@ -50,16 +52,16 @@ CREATE TYPE public.globalroletype AS ENUM (
 ALTER TYPE public.globalroletype OWNER TO dev;
 
 --
--- Name: listroletype; Type: TYPE; Schema: public; Owner: dev
+-- Name: projectroletype; Type: TYPE; Schema: public; Owner: dev
 --
 
-CREATE TYPE public.listroletype AS ENUM (
+CREATE TYPE public.projectroletype AS ENUM (
     'CREATOR',
     'USER'
 );
 
 
-ALTER TYPE public.listroletype OWNER TO dev;
+ALTER TYPE public.projectroletype OWNER TO dev;
 
 SET default_tablespace = '';
 
@@ -182,26 +184,26 @@ ALTER SEQUENCE public.items_id_seq OWNED BY public.items.id;
 
 
 --
--- Name: list_users; Type: TABLE; Schema: public; Owner: dev
+-- Name: project_users; Type: TABLE; Schema: public; Owner: dev
 --
 
-CREATE TABLE public.list_users (
+CREATE TABLE public.project_users (
     id integer NOT NULL,
     user_id integer NOT NULL,
-    list_id integer NOT NULL,
-    role_type public.listroletype NOT NULL,
+    project_id integer NOT NULL,
+    role_type public.projectroletype NOT NULL,
     created_at timestamp without time zone,
     updated_at timestamp without time zone
 );
 
 
-ALTER TABLE public.list_users OWNER TO dev;
+ALTER TABLE public.project_users OWNER TO dev;
 
 --
--- Name: list_users_id_seq; Type: SEQUENCE; Schema: public; Owner: dev
+-- Name: project_users_id_seq; Type: SEQUENCE; Schema: public; Owner: dev
 --
 
-CREATE SEQUENCE public.list_users_id_seq
+CREATE SEQUENCE public.project_users_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -210,13 +212,13 @@ CREATE SEQUENCE public.list_users_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.list_users_id_seq OWNER TO dev;
+ALTER TABLE public.project_users_id_seq OWNER TO dev;
 
 --
--- Name: list_users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: dev
+-- Name: project_users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: dev
 --
 
-ALTER SEQUENCE public.list_users_id_seq OWNED BY public.list_users.id;
+ALTER SEQUENCE public.project_users_id_seq OWNED BY public.project_users.id;
 
 
 --
@@ -229,7 +231,8 @@ CREATE TABLE public.lists (
     description character varying,
     created_at timestamp without time zone,
     updated_at timestamp without time zone,
-    destination_address character varying
+    destination_address character varying,
+    project_id integer NOT NULL
 );
 
 
@@ -296,25 +299,25 @@ ALTER TABLE public.locks_id_seq OWNER TO dev;
 ALTER SEQUENCE public.locks_id_seq OWNED BY public.locks.id;
 
 --
--- Name: list_roles; Type: TABLE; Schema: public; Owner: dev
+-- Name: project_roles; Type: TABLE; Schema: public; Owner: dev
 --
 
-CREATE TABLE public.list_roles (
+CREATE TABLE public.project_roles (
     id integer NOT NULL,
-    role_type public.listroletype NOT NULL,
+    role_type public.projectroletype NOT NULL,
     description character varying,
     created_at timestamp without time zone,
     updated_at timestamp without time zone
 );
 
 
-ALTER TABLE public.list_roles OWNER TO dev;
+ALTER TABLE public.project_roles OWNER TO dev;
 
 --
--- Name: list_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: dev
+-- Name: project_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: dev
 --
 
-CREATE SEQUENCE public.list_roles_id_seq
+CREATE SEQUENCE public.project_roles_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -323,13 +326,13 @@ CREATE SEQUENCE public.list_roles_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.list_roles_id_seq OWNER TO dev;
+ALTER TABLE public.project_roles_id_seq OWNER TO dev;
 
 --
--- Name: list_roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: dev
+-- Name: project_roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: dev
 --
 
-ALTER SEQUENCE public.list_roles_id_seq OWNED BY public.list_roles.id;
+ALTER SEQUENCE public.project_roles_id_seq OWNED BY public.project_roles.id;
 
 --
 -- Name: projects; Type: TABLE; Schema: public; Owner: dev
@@ -426,10 +429,10 @@ ALTER TABLE ONLY public.items ALTER COLUMN id SET DEFAULT nextval('public.items_
 
 
 --
--- Name: list_users id; Type: DEFAULT; Schema: public; Owner: dev
+-- Name: project_users id; Type: DEFAULT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_users ALTER COLUMN id SET DEFAULT nextval('public.list_users_id_seq'::regclass);
+ALTER TABLE ONLY public.project_users ALTER COLUMN id SET DEFAULT nextval('public.project_users_id_seq'::regclass);
 
 
 --
@@ -446,10 +449,10 @@ ALTER TABLE ONLY public.lists ALTER COLUMN id SET DEFAULT nextval('public.lists_
 ALTER TABLE ONLY public.locks ALTER COLUMN id SET DEFAULT nextval('public.locks_id_seq'::regclass);
 
 --
--- Name: list_roles id; Type: DEFAULT; Schema: public; Owner: dev
+-- Name: project_roles id; Type: DEFAULT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_roles ALTER COLUMN id SET DEFAULT nextval('public.list_roles_id_seq'::regclass);
+ALTER TABLE ONLY public.project_roles ALTER COLUMN id SET DEFAULT nextval('public.project_roles_id_seq'::regclass);
 
 --
 -- Name: projects id; Type: DEFAULT; Schema: public; Owner: dev
@@ -500,11 +503,11 @@ ALTER TABLE ONLY public.items
 
 
 --
--- Name: list_users list_users_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+-- Name: project_users project_users_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_users
-    ADD CONSTRAINT list_users_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.project_users
+    ADD CONSTRAINT project_users_pkey PRIMARY KEY (id);
 
 
 --
@@ -532,25 +535,25 @@ ALTER TABLE ONLY public.locks
 
 
 --
--- Name: list_users unique_user_list; Type: CONSTRAINT; Schema: public; Owner: dev
+-- Name: project_users unique_user_project; Type: CONSTRAINT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_users
-    ADD CONSTRAINT unique_user_list UNIQUE (user_id, list_id);
+ALTER TABLE ONLY public.project_users
+    ADD CONSTRAINT unique_user_project UNIQUE (user_id, project_id);
 
 --
--- Name: list_roles list_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+-- Name: project_roles project_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_roles
-    ADD CONSTRAINT list_roles_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.project_roles
+    ADD CONSTRAINT project_roles_pkey PRIMARY KEY (id);
 
 --
--- Name: list_roles list_roles_role_type_key; Type: CONSTRAINT; Schema: public; Owner: dev
+-- Name: project_roles project_roles_role_type_key; Type: CONSTRAINT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_roles
-    ADD CONSTRAINT list_roles_role_type_key UNIQUE (role_type);
+ALTER TABLE ONLY public.project_roles
+    ADD CONSTRAINT project_roles_role_type_key UNIQUE (role_type);
 
 --
 -- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
@@ -579,10 +582,10 @@ CREATE INDEX ix_users_id ON public.users USING btree (id);
 CREATE INDEX ix_users_external_id ON public.users USING btree (external_id);
 
 --
--- Name: ix_list_users_id; Type: INDEX; Schema: public; Owner: dev
+-- Name: ix_project_users_id; Type: INDEX; Schema: public; Owner: dev
 --
 
-CREATE INDEX ix_list_users_id ON public.list_users USING btree (id);
+CREATE INDEX ix_project_users_id ON public.project_users USING btree (id);
 
 
 --
@@ -592,10 +595,10 @@ CREATE INDEX ix_list_users_id ON public.list_users USING btree (id);
 CREATE INDEX ix_locks_id ON public.locks USING btree (id);
 
 --
--- Name: ix_list_roles_id; Type: INDEX; Schema: public; Owner: dev
+-- Name: ix_project_roles_id; Type: INDEX; Schema: public; Owner: dev
 --
 
-CREATE INDEX ix_list_roles_id ON public.list_roles USING btree (id);
+CREATE INDEX ix_project_roles_id ON public.project_roles USING btree (id);
 
 --
 -- Name: ix_projects_id; Type: INDEX; Schema: public; Owner: dev
@@ -625,19 +628,19 @@ ALTER TABLE ONLY public.items
 
 
 --
--- Name: list_users list_users_list_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
+-- Name: project_users project_users_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_users
-    ADD CONSTRAINT list_users_list_id_fkey FOREIGN KEY (list_id) REFERENCES public.lists(id);
+ALTER TABLE ONLY public.project_users
+    ADD CONSTRAINT project_users_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
--- Name: list_users list_users_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
+-- Name: project_users project_users_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
 --
 
-ALTER TABLE ONLY public.list_users
-    ADD CONSTRAINT list_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+ALTER TABLE ONLY public.project_users
+    ADD CONSTRAINT project_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -670,11 +673,18 @@ ALTER TABLE ONLY public.steps
     ADD CONSTRAINT steps_parent_step_id_fkey FOREIGN KEY (parent_step_id) REFERENCES public.steps(id);
 
 --
--- Data for Name: list_roles; Type: TABLE DATA; Schema: public; Owner: dev
+-- Name: lists lists_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
 --
 
-INSERT INTO public.list_roles (role_type, description) VALUES ('CREATOR', 'Creator of a list');
-INSERT INTO public.list_roles (role_type, description) VALUES ('USER', 'User of a list');
+ALTER TABLE ONLY public.lists
+    ADD CONSTRAINT lists_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+--
+-- Data for Name: project_roles; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+INSERT INTO public.project_roles (role_type, description) VALUES ('CREATOR', 'Creator of a project');
+INSERT INTO public.project_roles (role_type, description) VALUES ('USER', 'User of a project');
 
 --
 -- PostgreSQL database dump complete

@@ -19,11 +19,8 @@ from app.core.error_handlers import api_exception_handler, generic_exception_han
 # Import all models explicitly to ensure they're registered
 from app.models.list_model import List
 from app.models.item_model import Item
-# from app.models.role_model import Role
 from app.models.lock_model import Lock
-# from app.models.user_model import User
 from app.models.global_role_model import GlobalRole
-from app.models.list_role_model import ListRole
 from app.models.project_model import Project
 from app.models.step_model import Step
 # Import any other models you have

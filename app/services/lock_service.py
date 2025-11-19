@@ -1,5 +1,6 @@
 from app.repositories.lock_repository import LockRepository
-from app.repositories.list_user_repository import ListUserRepository
+from app.repositories.list_repository import ListRepository
+from app.repositories.project_repository import ProjectRepository
 from typing import Optional, Dict, Any
 from app.core.exceptions import LockException, NotFoundException, ForbiddenException
 from .notification_service import NotificationService
@@ -11,29 +12,30 @@ class LockService:
     def __init__(
         self, 
         db: Session, 
-        lock_repo: LockRepository = None,
-        list_user_repo: ListUserRepository = None
+        lock_repo: Optional[LockRepository] = None,
+        list_repo: Optional[ListRepository] = None,
+        project_repo: Optional[ProjectRepository] = None
     ):
         self.db = db
         self.lock_repo = lock_repo or LockRepository(db)
-        self.list_user_repo = list_user_repo or ListUserRepository(db)
+        self.list_repo = list_repo or ListRepository(db)
+        self.project_repo = project_repo or ProjectRepository(db)
         self.notification_service = NotificationService()
     
-    def _check_list_participant(self, list_id: int, user_internal_id: int):
-        if not self.list_user_repo.user_has_access(user_internal_id, list_id):
-            raise ForbiddenException("You don't have access to this list")
-        
-        from app.repositories.list_repository import ListRepository
-        list_repo = ListRepository(self.db)
-        db_list = list_repo.get_by_id(list_id)
+    def _check_project_access(self, list_id: int, user_internal_id: int):
+        db_list = self.list_repo.get_by_id(list_id)
         if not db_list:
             raise NotFoundException("List not found")
+        
+        project = self.project_repo.get_by_id_for_user(db_list.project_id, user_internal_id)
+        if not project:
+            raise ForbiddenException("You don't have access to this project")
         
         return db_list
 
     def acquire_lock(self, list_id: int, user_internal_id: int) -> Optional[Lock]:
         try:
-            self._check_list_participant(list_id, user_internal_id)
+            self._check_project_access(list_id, user_internal_id)
             
             lock = self.lock_repo.acquire_lock(list_id, user_internal_id)
             if lock:
@@ -51,7 +53,7 @@ class LockService:
 
     def release_lock(self, list_id: int, user_internal_id: int) -> Dict[str, Any]:
         try:
-            self._check_list_participant(list_id, user_internal_id)
+            self._check_project_access(list_id, user_internal_id)
             
             success = self.lock_repo.release_lock(list_id, user_internal_id)
             if success:
@@ -69,7 +71,7 @@ class LockService:
 
     def check_lock(self, list_id: int, user_internal_id: int) -> bool:
         try:
-            self._check_list_participant(list_id, user_internal_id)
+            self._check_project_access(list_id, user_internal_id)
             
             current_lock = self.lock_repo.get_lock_by_list_id(list_id)
             

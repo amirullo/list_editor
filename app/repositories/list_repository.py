@@ -1,7 +1,7 @@
 
 from typing import List as TypeList, Optional, Dict, Any
 from app.models.list_model import List
-from app.models.list_user_model import ListUser
+from app.models.project_user_model import ProjectUser
 from .base_repository import BaseRepository
 from sqlalchemy.orm import Session
 
@@ -12,15 +12,14 @@ class ListRepository(BaseRepository[List]):
     def get_by_id(self, list_id: int) -> Optional[List]:
         return self.db.query(List).filter(List.id == list_id).first()
 
-    def get_user_lists(self, user_internal_id: int) -> TypeList[List]:
-        """Get all lists user has access to"""
-        return self.db.query(List).join(ListUser).filter(ListUser.user_id == user_internal_id).all()
-
-    def get_list_by_id(self, list_id: int, user_internal_id: int) -> Optional[List]:
-        return self.db.query(List).join(ListUser).filter(
+    def get_by_id_for_user(self, list_id: int, user_internal_id: int) -> Optional[List]:
+        return self.db.query(List).join(ProjectUser, List.project_id == ProjectUser.project_id).filter(
             List.id == list_id,
-            ListUser.user_id == user_internal_id
+            ProjectUser.user_id == user_internal_id
         ).first()
+
+    def get_all_for_project(self, project_id: int) -> TypeList[List]:
+        return self.db.query(List).filter(List.project_id == project_id).all()
 
     def update(self, list_id: int, list_update: Dict[str, Any]) -> Optional[List]:
         db_list = self.get_by_id(list_id)

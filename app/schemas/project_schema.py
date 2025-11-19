@@ -1,7 +1,9 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, List as TypeList
 from datetime import datetime
 from .step_schema import Step
+from app.models.project_user_model import ProjectRoleType
+from app.utils.logger import logger # Import logger
 
 class ProjectBase(BaseModel):
     name: str
@@ -19,10 +21,24 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(ProjectBase):
     pass
 
+class ProjectUser(BaseModel):
+    user_external_id: str # Directly map from the SQLAlchemy ProjectUser's user_external_id property
+    role_type: ProjectRoleType
+
+    model_config = ConfigDict(from_attributes=True) # Enable mapping from attributes
+
+
 class Project(ProjectBase):
     id: int
-    steps: List['Step'] = []
+    steps: TypeList['Step'] = []
+    project_users: TypeList[ProjectUser] = [] # Renamed from 'participants'
 
     model_config = ConfigDict(from_attributes=True)
+
+class ProjectAddUser(BaseModel):
+    user_external_id: str = Field(..., min_length=1, description="External ID of the user to add")
+
+class ProjectRemoveUser(BaseModel):
+    user_external_id: str = Field(..., min_length=1, description="External ID of the user to remove")
 
 Project.model_rebuild()

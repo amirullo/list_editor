@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .base import Base
+from .base import BaseModel
 
-class Project(Base):
+class Project(BaseModel):
     __tablename__ = "projects"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -16,3 +17,6 @@ class Project(Base):
     total_workers_price = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    lists = relationship("List", back_populates="project")
+    project_users = relationship("ProjectUser", back_populates="project", cascade="all, delete-orphan")
