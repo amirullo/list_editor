@@ -28,12 +28,13 @@ List Editor is a collaborative project management system designed for teams and 
 - **Project Details**: Projects can include a name, planned and actual periods, total material and worker prices, and a place description.
 
 #### List Management
-- **Create Lists**: Users can create new lists associated with a project.
+- **Automatic List Creation**: Lists are automatically created when a Step is created, establishing a one-to-one relationship.
+- **Step-List Binding**: Each List is bound to exactly one Step, and each Step has exactly one List.
 - **List Access**: Access to lists is inherited from the parent project.
-- **List Updates**: All project participants can modify list metadata.
-- **List Deletion**: Only project participants with appropriate permissions can delete lists.
-- **List Details**: Lists can include total price, total delivery period, and a flat address.
-- **Store Locations**: Lists can include a map with store addresses.
+- **List Updates**: All project participants can modify list metadata (name, destination_address, description).
+- **List Deletion**: Lists are automatically deleted when their associated Step is deleted (cascade delete).
+- **List Details**: Lists include a name (auto-generated as "List for {step_name}"), destination address, and description.
+- **Store Locations**: Lists can include destination addresses for delivery or pickup.
 
 #### Item Management
 - **Add Items**: All project participants can add items to lists within their accessible projects.
@@ -46,9 +47,12 @@ List Editor is a collaborative project management system designed for teams and 
 - **Item Status**: Items have flags for "approved" (worker), "bought" (client/worker), and "delivered" (worker).
 
 #### Step Management
-- **Create Steps**: Break down a project into steps, each with a name, planned and actual periods, material and worker prices, required items, and photos/videos of the results.
+- **Create Steps**: Break down a project into steps, each with a name, planned and actual periods, material and worker prices.
+- **Automatic List Creation**: When a step is created, a corresponding list is automatically created and bound to it.
+- **One-to-One Relationship**: Each step has exactly one list, and each list belongs to exactly one step.
 - **Step Access**: Access to steps is inherited from the parent project.
 - **Hierarchical Steps**: Steps can have a parent step, allowing for complex project structures.
+- **Step Details**: Steps include name, dates (planned/actual start and end), prices (materials and workers), and project association.
 - **Gantt Chart**: Visualize the project timeline with a Gantt diagram (conceptual, not implemented in API).
 
 #### Collaboration Features
@@ -272,11 +276,11 @@ list_editor/
 - `DELETE /api/projects/{project_id}/users` - Remove a user from a project by their external ID (project creator only).
 
 ### List Management
-- `POST /api/lists/` - Create a new list, associated with a `project_id`.
+- ~~`POST /api/lists/`~~ - **Deprecated**: Lists are now automatically created when a Step is created.
 - `GET /api/lists/project/{project_id}` - Get all lists for a specific project.
 - `GET /api/lists/{list_id}` - Get specific list details (requires project access).
-- `PUT /api/lists/{list_id}` - Update list information (requires project access).
-- `DELETE /api/lists/{list_id}` - Delete list (requires project access).
+- `PUT /api/lists/{list_id}` - Update list information (name, destination_address, description) (requires project access).
+- `DELETE /api/lists/{list_id}` - Delete list (requires project access). **Note**: Deleting a list will also delete its associated step due to cascade constraints.
 
 ### Item Management
 - `POST /api/lists/{list_id}/items` - Create new item in list (requires project access).
@@ -285,11 +289,11 @@ list_editor/
 - `DELETE /api/lists/{list_id}/items/{item_id}` - Delete item (requires project access).
 
 ### Step Management
-- `POST /api/steps/` - Create a new step, associated with a `project_id`.
-- `GET /api/steps/` - Get all steps (requires project access).
+- `POST /api/steps/` - Create a new step associated with a `project_id`. **Automatically creates a corresponding list**.
+- `GET /api/steps/` - Get all steps accessible to the user.
 - `GET /api/steps/{step_id}` - Get specific step details (requires project access).
 - `PUT /api/steps/{step_id}` - Update step information (requires project access).
-- `DELETE /api/steps/{step_id}` - Delete step (requires project access).
+- `DELETE /api/steps/{step_id}` - Delete step (requires project access). **Also deletes the associated list**.
 
 ### Locking System
 - `POST /api/lists/{list_id}/lock` - Acquire lock on list (requires project access).
@@ -332,9 +336,11 @@ list_editor/
 
 ### List
 - `id`: Integer primary key.
-- `name`: String (required).
+- `name`: String (required, auto-generated as "List for {step_name}").
 - `description`: Text (optional).
+- `destination_address`: String (optional).
 - `project_id`: Foreign key to Project (required).
+- `step_id`: Foreign key to Step (required, unique - enforces one-to-one relationship).
 - `created_at`: Timestamp.
 - `updated_at`: Timestamp.
 
@@ -413,14 +419,23 @@ list_editor/
 ## Business workflow
 
 ### A potential workflow:  
-1. **Project Planning**: A user defines a project by creating a Project and breaking it down into hierarchical Steps. Each Step would have a description of the materials needed.
-2. **Material Aggregation**: Within the project, you create one or more Lists (e.g., "Hardware Store List," "Online Plumbing Orders") to gather all the Items required across all your Steps.
-3. **Collaborative Purchasing**: Project participants use the List entity's collaboration features to manage the purchasing process. A `CLIENT` can approve prices, and a `WORKER` can update quantities and mark items as "bought" or "delivered."
-4. **Work Execution**: Once the Items for a Step are marked as "delivered" in your List, the work on that Step can commence.  
+1. **Project Planning**: A user defines a project by creating a Project and breaking it down into hierarchical Steps. Each Step automatically gets an associated List for managing materials.
+2. **Automatic List Creation**: When you create a Step, a List is automatically created and bound to it with the name "List for {step_name}". This ensures every step has a dedicated shopping list.
+3. **Material Management**: Each Step's List contains the Items (materials) needed for that specific step. You can add, update, and track items within each list.
+4. **Collaborative Purchasing**: Project participants use the List entity's collaboration features to manage the purchasing process. A `CLIENT` can approve prices, and a `WORKER` can update quantities and mark items as "bought" or "delivered."
+5. **Work Execution**: Once the Items for a Step are marked as "delivered" in the Step's List, the work on that Step can commence.  
 
 This approach creates a clear separation of concerns:
-- **Project / Step**: Manages the work and schedule.
-- **List / Item**: Manages the materials and procurement.
+- **Project**: Manages the overall work scope and participants.
+- **Step**: Defines individual work tasks with timeline and pricing.
+- **List**: Automatically created for each Step to manage material procurement.
+- **Item**: Individual materials needed for a Step.
+
+### Key Benefits of the Step-List Relationship:
+- **Automatic Organization**: No need to manually create and associate lists with steps.
+- **Data Integrity**: The one-to-one relationship ensures each step has exactly one list, preventing confusion.
+- **Simplified Workflow**: Creating a step automatically sets up the material management structure.
+- **Cascade Protection**: Deleting a step automatically cleans up its associated list, maintaining database consistency.
 
 On the front-end, there would be a project of maintenance. That would consist of many steps of maintenance. There are steps that could be paralleled, or be in sequence. There are several abstractions of steps.
 The List entity is used as the "shopping cart" for a maintenance project. The Step entity defines what work needs to be done, and the List entity helps manage the acquisition of materials (Items) needed for that work.

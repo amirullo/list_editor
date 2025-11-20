@@ -111,8 +111,10 @@ def test_get_all_steps(): # Removed client and db_session
     project_id = project_response.json()["data"]["id"]
     
     # 2. Create a couple of steps for this project
-    requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Step Alpha", "project_id": project_id}) # Changed client.post to requests.post
-    requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Step Beta", "project_id": project_id}) # Changed client.post to requests.post
+    step1_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Step Alpha", "project_id": project_id})
+    assert step1_response.status_code == 201
+    step2_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Step Beta", "project_id": project_id})
+    assert step2_response.status_code == 201
     
     # 3. Get all steps (note: this endpoint gets ALL steps, not just for one project)
     response = requests.get(f"{BASE_URL}/steps/", headers=headers) # Changed client.get to requests.get
@@ -121,6 +123,11 @@ def test_get_all_steps(): # Removed client and db_session
     assert response.status_code == 200
     data = response.json()["data"]
     assert isinstance(data, list)
+    
+    print(f"\nTotal steps returned: {len(data)}")
+    print(f"Project ID we're looking for: {project_id}")
+    for s in data:
+        print(f"Step: {s['name']}, project_id: {s['project_id']}")
     
     # Filter for the steps we just created
     project_steps = [s for s in data if s["project_id"] == project_id]

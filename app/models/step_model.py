@@ -21,6 +21,7 @@ class Step(Base):
     project = relationship("Project", back_populates="steps")
     parent_step = relationship("Step", remote_side=[id])
     sub_steps = relationship("Step", back_populates="parent_step")
+    list = relationship("List", uselist=False, back_populates="step", cascade="all, delete-orphan")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

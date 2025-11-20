@@ -12,6 +12,9 @@ class StepService:
     def __init__(self, db: Session):
         self.repository = StepRepository(db)
         self.project_repository = ProjectRepository(db)
+        # Import locally to avoid circular dependency if any, though usually fine here
+        from app.repositories.list_repository import ListRepository
+        self.list_repository = ListRepository(db)
 
     def create_step(self, step: StepCreate, user_internal_id: int) -> Step: # Changed type to int
         project = self.project_repository.get_by_id_for_user(step.project_id, user_internal_id)
@@ -19,7 +22,17 @@ class StepService:
             logger.info(f"Project not found or access denied for project_id: {step.project_id}, user_internal_id: {user_internal_id}")
             raise NotFoundException("Project not found or you don't have access")
         
-        return self.repository.create(obj_in=step.model_dump())
+        new_step = self.repository.create(obj_in=step.model_dump())
+        
+        # Automatically create a list for this step
+        list_data = {
+            "name": f"List for {new_step.name}",
+            "project_id": new_step.project_id,
+            "step_id": new_step.id
+        }
+        self.list_repository.create(list_data)
+        
+        return new_step
 
     def get_step(self, step_id: int, user_internal_id: int) -> StepSchema: # Changed type to int
         db_step = self.repository.get(step_id)
@@ -33,8 +46,8 @@ class StepService:
         return StepSchema.model_validate(db_step)
 
     def get_all_steps(self) -> List[StepSchema]:
-        # Assuming get_multi is the equivalent of get_all in BaseRepository
-        steps = self.repository.get_multi() 
+        # Get all steps without limit
+        steps = self.repository.get_multi(skip=0, limit=10000) 
         return [StepSchema.model_validate(step) for step in steps]
 
     def update_step(self, step_id: int, step: StepUpdate, user_internal_id: int) -> Step: # Changed type to int

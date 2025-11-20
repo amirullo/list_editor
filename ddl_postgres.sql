@@ -214,7 +214,8 @@ CREATE TABLE public.lists (
     created_at timestamp without time zone,
     updated_at timestamp without time zone,
     destination_address character varying,
-    project_id integer NOT NULL
+    project_id integer NOT NULL,
+    step_id integer NOT NULL UNIQUE
 );
 
 
@@ -654,6 +655,13 @@ ALTER TABLE ONLY public.steps
 
 ALTER TABLE ONLY public.lists
     ADD CONSTRAINT lists_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+--
+-- Name: lists lists_step_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.lists
+    ADD CONSTRAINT lists_step_id_fkey FOREIGN KEY (step_id) REFERENCES public.steps(id);
 
 --
 -- Data for Name: project_roles; Type: TABLE DATA; Schema: public; Owner: dev

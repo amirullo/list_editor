@@ -25,17 +25,37 @@ def create_project(external_user_id: str, project_name: str) -> Dict[str, Any]:
     response.raise_for_status()
     return response.json()
 
-def create_list(external_user_id: str, project_id: int, list_name: str) -> Dict[str, Any]:
+def create_step(external_user_id: str, project_id: int, step_name: str):
     headers = {
         "Content-Type": "application/json",
         "X-User-ID": external_user_id
     }
     payload = {
-        "list_create": {"name": list_name, "project_id": project_id}
+        "name": step_name,
+        "project_id": project_id
     }
-    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+    response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=payload)
     response.raise_for_status()
     return response.json()
+
+def create_list(external_user_id: str, project_id: int, list_name: str) -> Dict[str, Any]:
+    # We ignore list_name for creation as it's auto-generated, but we could update it later if needed.
+    # For now, just create a step.
+    step_name = f"Step for {list_name}"
+    step_data = create_step(external_user_id, project_id, step_name)
+    
+    # Fetch list
+    headers = {"X-User-ID": external_user_id}
+    response = requests.get(f"{BASE_URL}/lists/project/{project_id}", headers=headers)
+    response.raise_for_status()
+    lists = response.json()["data"]
+    
+    expected_name = f"List for {step_name}"
+    for l in lists:
+        if l["name"] == expected_name:
+            return {"data": l}
+            
+    raise Exception("List not found for step")
 
 def assign_global_role(external_user_id: str, role_type: str) -> Dict[str, Any]:
     headers = {

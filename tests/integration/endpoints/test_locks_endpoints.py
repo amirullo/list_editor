@@ -26,20 +26,36 @@ def create_project(external_user_id: str, project_name: str): # Use external_use
     response.raise_for_status()
     return response.json()
 
-def create_list(external_user_id: str, project_id: int, list_name: str): # Use external_user_id
+def create_step(external_user_id: str, project_id: int, step_name: str):
     headers = {
         "Content-Type": "application/json",
-        "X-User-ID": external_user_id # Use external_user_id in header
+        "X-User-ID": external_user_id
     }
     payload = {
-        "list_create": {
-            "name": list_name,
-            "project_id": project_id
-        }
+        "name": step_name,
+        "project_id": project_id
     }
-    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+    response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=payload)
     response.raise_for_status()
     return response.json()
+
+def create_list(external_user_id: str, project_id: int, list_name: str): # Use external_user_id
+    # Create step to create list
+    step_name = f"Step for {list_name}"
+    create_step(external_user_id, project_id, step_name)
+    
+    # Fetch list
+    headers = {"X-User-ID": external_user_id}
+    response = requests.get(f"{BASE_URL}/lists/project/{project_id}", headers=headers)
+    response.raise_for_status()
+    lists = response.json()["data"]
+    
+    expected_name = f"List for {step_name}"
+    for l in lists:
+        if l["name"] == expected_name:
+            return {"data": l}
+            
+    raise Exception("List not found for step")
 
 def test_acquire_and_release_lock_successfully():
     # Arrange
