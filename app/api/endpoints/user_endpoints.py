@@ -4,7 +4,6 @@ from app.api.dependencies import get_external_user_id, get_user_service
 from app.services.user_service import UserService
 from app.schemas.user_schema import UserResponse
 from app.models.user_model import User
-from uuid import UUID # Import UUID
 from app.utils.logger import logger
 
 router = APIRouter()
@@ -22,4 +21,4 @@ def login_or_create_user(
     """
     user = user_service.get_or_create_user_by_external_id(user_external_id)
     logger.info(f"User internal_id type: {type(user.internal_id)}, value: {user.internal_id}")
-    return UserResponse(external_id=user.external_id, internal_id=str(user.internal_id)) # Convert UUID to str for response
+    return UserResponse(external_id=user.external_id, internal_id=user.internal_id)

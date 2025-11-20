@@ -26,20 +26,36 @@ def create_project(external_user_id: str, project_name: str): # Use external_use
     response.raise_for_status()
     return response.json()
 
-def create_list(external_user_id: str, project_id: int, list_name: str): # Use external_user_id
+def create_step(external_user_id: str, project_id: int, step_name: str):
     headers = {
         "Content-Type": "application/json",
-        "X-User-ID": external_user_id # Use external_user_id in header
+        "X-User-ID": external_user_id
     }
     payload = {
-        "list_create": {
-            "name": list_name,
-            "project_id": project_id
-        }
+        "name": step_name,
+        "project_id": project_id
     }
-    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+    response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=payload)
     response.raise_for_status()
     return response.json()
+
+def create_list(external_user_id: str, project_id: int, list_name: str): # Use external_user_id
+    # Create step to create list
+    step_name = f"Step for {list_name}"
+    create_step(external_user_id, project_id, step_name)
+    
+    # Fetch list
+    headers = {"X-User-ID": external_user_id}
+    response = requests.get(f"{BASE_URL}/lists/project/{project_id}", headers=headers)
+    response.raise_for_status()
+    lists = response.json()["data"]
+    
+    expected_name = f"List for {step_name}"
+    for l in lists:
+        if l["name"] == expected_name:
+            return {"data": l}
+            
+    raise Exception("List not found for step")
 
 def test_acquire_and_release_lock_successfully():
     # Arrange
@@ -110,7 +126,7 @@ def test_acquire_lock_already_locked():
     # Assert
     assert second_acquire_response.status_code == 409 # Conflict
     second_acquire_response_data = second_acquire_response.json()
-    assert "List is already locked by another user" in second_acquire_response_data["message"] # Changed "detail" to "message"
+    assert "List is already locked by another user" in second_acquire_response_data["message"]
 
 def test_release_lock_not_held_by_user():
     # Arrange
@@ -143,7 +159,7 @@ def test_release_lock_not_held_by_user():
     # Assert
     assert release_response.status_code == 403 # Forbidden
     release_response_data = release_response.json()
-    assert "Lock not held by current user or not found" in release_response_data["message"] # Changed "detail" to "message"
+    assert "Lock not held by current user or not found" in release_response_data["message"]
 
 def test_release_lock_not_found():
     # Arrange
@@ -159,4 +175,4 @@ def test_release_lock_not_found():
     # Assert
     assert release_response.status_code == 404 # Not Found
     release_response_data = release_response.json()
-    assert "List not found" in release_response_data["message"] # Changed "detail" to "message"
+    assert "List not found" in release_response_data["message"]

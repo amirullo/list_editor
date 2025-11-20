@@ -26,65 +26,89 @@ def create_project(external_user_id: str, project_name: str):
     response.raise_for_status()
     return response.json()
 
-def create_list(external_user_id: str, project_id: int, list_name: str):
+def create_step(external_user_id: str, project_id: int, step_name: str):
     headers = {
         "Content-Type": "application/json",
         "X-User-ID": external_user_id
     }
     payload = {
-        "list_create": {
-            "name": list_name,
-            "project_id": project_id
-        }
+        "name": step_name,
+        "project_id": project_id
     }
-    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+    response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=payload)
     response.raise_for_status()
     return response.json()
 
-def test_create_list_with_valid_data_no_items():
+def get_list_for_step(external_user_id: str, step_id: int):
+    # Since we don't have a direct endpoint to get list by step_id easily without searching,
+    # we might need to rely on the fact that we can get the list if we know its ID.
+    # But wait, the test needs the list ID.
+    # The step creation doesn't return the list ID in the response (it returns Step).
+    # However, we can fetch the step and see if it has the list ID?
+    # The Step schema might not have list_id.
+    # Let's check Step schema.
+    # Actually, we can just fetch all lists for the project and find the one with the step_id.
+    # Or we can assume the list name is "List for {step_name}".
+    pass 
+    
+def create_list_via_step(external_user_id: str, project_id: int, step_name: str):
+    step_data = create_step(external_user_id, project_id, step_name)
+    step_id = step_data["data"]["id"]
+    
+    # Now find the list. 
+    headers = {"X-User-ID": external_user_id}
+    response = requests.get(f"{BASE_URL}/lists/project/{project_id}", headers=headers)
+    response.raise_for_status()
+    lists = response.json()["data"]
+    
+    # Assuming the last created list is the one, or match by name
+    expected_name = f"List for {step_name}"
+    for l in lists:
+        if l["name"] == expected_name:
+            return {"data": l} # Mimic old response structure for minimal change
+            
+    raise Exception("List not found for step")
+
+def test_create_list_via_step_creation():
     # Arrange
     external_user_id = generate_external_userid()
     internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project")
     project_id = project_data["data"]["id"]
-    list_name = "Valid Test List"
-    destination_address = "123 Main St"
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-ID": external_user_id
-    }
-    payload = {
-        "list_create": {
-            "name": list_name,
-            "destination_address": destination_address,
-            "project_id": project_id
-        },
-        "items": None
-    }
+    step_name = "Step for List"
+    expected_list_name = f"List for {step_name}"
 
     # Act
-    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
+    # Create step, which should trigger list creation
+    step_response = create_step(external_user_id, project_id, step_name)
+    step_id = step_response["data"]["id"]
 
     # Assert
-    assert response.status_code == 201
-    response_data = response.json()
-    assert response_data["message"] == "List created successfully"
-
-    list_data = response_data["data"]
-    assert list_data["name"] == list_name
-    assert list_data["destination_address"] == destination_address
-    assert "id" in list_data
-    assert list_data["project_id"] == project_id
+    # Verify list exists via API
+    headers = {"X-User-ID": external_user_id}
+    response = requests.get(f"{BASE_URL}/lists/project/{project_id}", headers=headers)
+    assert response.status_code == 200
+    lists = response.json()["data"]
+    
+    found_list = None
+    for l in lists:
+        if l["name"] == expected_list_name:
+            found_list = l
+            break
+            
+    assert found_list is not None
+    assert found_list["project_id"] == project_id
+    # We can't easily check step_id in list response unless we added it to schema, 
+    # but we can check DB.
 
     # Verify the list was created in the database
     db = SessionLocal()
     try:
-        db_list = db.query(List).filter(List.id == list_data["id"]).first()
+        db_list = db.query(List).filter(List.id == found_list["id"]).first()
         assert db_list is not None
-        assert db_list.name == list_name
-        assert db_list.destination_address == destination_address
+        assert db_list.name == expected_list_name
         assert db_list.project_id == project_id
+        assert db_list.step_id == step_id
     finally:
         db.close()
 
@@ -99,15 +123,9 @@ def test_get_all_lists_for_project():
         "Content-Type": "application/json",
         "X-User-ID": external_user_id
     }
-    # Create a couple of lists in the project
-    requests.post(f"{BASE_URL}/lists/", headers=headers, json={
-        "list_create": {"name": "List 1", "destination_address": "Addr 1", "project_id": project_id},
-        "items": None
-    })
-    requests.post(f"{BASE_URL}/lists/", headers=headers, json={
-        "list_create": {"name": "List 2", "destination_address": "Addr 2", "project_id": project_id},
-        "items": None
-    })
+    # Create a couple of steps in the project, which creates lists
+    create_step(external_user_id, project_id, "Step 1")
+    create_step(external_user_id, project_id, "Step 2")
 
     # Act
     response = requests.get(f"{BASE_URL}/lists/project/{project_id}", headers=headers)
@@ -124,25 +142,13 @@ def test_get_list():
     internal_user_id = login_or_create_user(external_user_id)
     project_data = create_project(external_user_id, "Test Project")
     project_id = project_data["data"]["id"]
-    list_name = "My Test List"
-    destination_address = "444 Pine St"
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-ID": external_user_id
-    }
-    payload = {
-        "list_create": {
-            "name": list_name,
-            "destination_address": destination_address,
-            "project_id": project_id
-        },
-        "items": None
-    }
-    response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=payload)
-    list_id = response.json()["data"]["id"]
+    step_name = "Step for My Test List"
+    list_data = create_list_via_step(external_user_id, project_id, step_name)
+    list_id = list_data["data"]["id"]
+    list_name = list_data["data"]["name"]
 
     # Act
+    headers = {"X-User-ID": external_user_id}
     response = requests.get(f"{BASE_URL}/lists/{list_id}", headers=headers)
 
     # Assert
@@ -152,7 +158,8 @@ def test_get_list():
     list_data = response_data["data"]
     assert list_data["id"] == list_id
     assert list_data["name"] == list_name
-    assert list_data["destination_address"] == destination_address
+    # destination_address is None by default when created via step
+    assert list_data["destination_address"] is None
     assert list_data["project_id"] == project_id
 
 def test_update_list_name_successfully():
@@ -163,9 +170,8 @@ def test_update_list_name_successfully():
     project_id = project_data["data"]["id"]
 
     headers = {"Content-Type": "application/json", "X-User-ID": external_user_id}
-    list_payload = {"list_create": {"name": "Original Name", "destination_address": "555 Gold Rd", "project_id": project_id}, "items": None}
-    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
-    list_id = list_response.json()["data"]["id"]
+    list_data = create_list_via_step(external_user_id, project_id, "Step for Update")
+    list_id = list_data["data"]["id"]
 
     # Act
     updated_name = "Updated Name"
@@ -199,9 +205,8 @@ def test_delete_list_successfully():
     project_id = project_data["data"]["id"]
 
     headers = {"Content-Type": "application/json", "X-User-ID": external_user_id}
-    list_payload = {"list_create": {"name": "List to be deleted", "destination_address": "111 Tin Ave", "project_id": project_id}, "items": None}
-    list_response = requests.post(f"{BASE_URL}/lists/", headers=headers, json=list_payload)
-    list_id = list_response.json()["data"]["id"]
+    list_data = create_list_via_step(external_user_id, project_id, "Step for Delete")
+    list_id = list_data["data"]["id"]
 
     # Act
     response = requests.delete(f"{BASE_URL}/lists/{list_id}", headers=headers)

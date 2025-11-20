@@ -22,6 +22,7 @@ class ListInDB(BaseModel):
     id: int
     name: str = Field(..., min_length=1)
     project_id: int
+    step_id: int
     created_at: datetime
     updated_at: datetime
     destination_address: Optional[str] = None

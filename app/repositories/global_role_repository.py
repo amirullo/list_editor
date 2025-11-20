@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.global_role_model import GlobalRole, GlobalRoleType
 from typing import Optional
-# from uuid import UUID # Removed UUID import
 
 class GlobalRoleRepository:
     def __init__(self, db: Session):

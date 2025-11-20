@@ -6,7 +6,6 @@ from app.models.user_model import User
 from app.schemas.project_schema import ProjectCreate, ProjectUpdate
 from .base_repository import BaseRepository
 from app.repositories.user_repository import UserRepository # Import UserRepository
-from uuid import UUID # Import UUID
 
 class ProjectRepository(BaseRepository[Project]):
     def __init__(self, db: Session):

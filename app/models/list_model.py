@@ -13,7 +13,9 @@ class List(BaseModel):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     destination_address = Column(String, nullable=True)
     project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
+    step_id = Column(Integer, ForeignKey('steps.id'), nullable=False, unique=True)
     
     items = relationship("Item", back_populates="list", cascade="all, delete-orphan")
     project = relationship("Project", back_populates="lists")
+    step = relationship("Step", back_populates="list")
     lock = relationship("Lock", uselist=False, back_populates="list", cascade="all, delete-orphan")

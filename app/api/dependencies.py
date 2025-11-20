@@ -16,7 +16,6 @@ from app.repositories.item_repository import ItemRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.project_repository import ProjectRepository
 from typing import Optional
-# from uuid import UUID # Removed UUID import as internal_id is int
 from app.utils.logger import logger # Import logger
 
 def get_external_user_id(user_external_id: str = Header(..., alias="X-User-ID")) -> str:
