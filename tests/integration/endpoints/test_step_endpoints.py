@@ -27,7 +27,7 @@ def test_create_and_get_step(): # Removed client and db_session
 
     # 1. First, create a project to associate the step with
     project_data = ProjectCreate(name="Test Project for Step", place_description="Test location")
-    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump()) # Changed client.post to requests.post
+    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump())
     assert project_response.status_code == 201
     project_id = project_response.json()["data"]["id"]
 
@@ -37,7 +37,7 @@ def test_create_and_get_step(): # Removed client and db_session
         "project_id": project_id
     }
     
-    create_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=step_data) # Changed client.post to requests.post
+    create_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=step_data)
     
     # Verify the creation response
     assert create_response.status_code == 201
@@ -56,7 +56,7 @@ def test_create_and_get_step(): # Removed client and db_session
         db.close()
 
     # 4. Get the step via the API endpoint
-    get_response = requests.get(f"{BASE_URL}/steps/{step_id}", headers=headers) # Changed client.get to requests.get
+    get_response = requests.get(f"{BASE_URL}/steps/{step_id}", headers=headers)
     
     # Verify the GET response
     assert get_response.status_code == 200
@@ -78,10 +78,10 @@ def test_create_step_nonexistent_project(): # Removed client
         "project_id": 99999  # Assuming this project ID does not exist
     }
     
-    response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=step_data) # Changed client.post to requests.post
+    response = requests.post(f"{BASE_URL}/steps/", headers=headers, json=step_data)
     
     assert response.status_code == 404
-    assert response.json()["message"] == "Project not found or you don't have access" # Changed "detail" to "message"
+    assert response.json()["message"] == "Project not found or you don't have access"
 
 def test_get_nonexistent_step(): # Removed client
     """
@@ -91,9 +91,9 @@ def test_get_nonexistent_step(): # Removed client
     internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
-    response = requests.get(f"{BASE_URL}/steps/99999", headers=headers) # Changed client.get to requests.get
+    response = requests.get(f"{BASE_URL}/steps/99999", headers=headers)
     assert response.status_code == 404
-    assert response.json()["message"] == "Step not found" # Changed "detail" to "message"
+    assert response.json()["message"] == "Step not found"
 
 def test_get_all_steps(): # Removed client and db_session
     """
@@ -106,7 +106,7 @@ def test_get_all_steps(): # Removed client and db_session
 
     # 1. Create a project
     project_data = ProjectCreate(name="Project with Multiple Steps")
-    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump()) # Changed client.post to requests.post
+    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump())
     assert project_response.status_code == 201
     project_id = project_response.json()["data"]["id"]
     
@@ -117,7 +117,7 @@ def test_get_all_steps(): # Removed client and db_session
     assert step2_response.status_code == 201
     
     # 3. Get all steps (note: this endpoint gets ALL steps, not just for one project)
-    response = requests.get(f"{BASE_URL}/steps/", headers=headers) # Changed client.get to requests.get
+    response = requests.get(f"{BASE_URL}/steps/", headers=headers)
     
     # Verify the response
     assert response.status_code == 200
@@ -147,17 +147,17 @@ def test_update_step(): # Removed client and db_session
 
     # 1. Create a project and a step
     project_data = ProjectCreate(name="Project for Update Test")
-    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump()) # Changed client.post to requests.post
+    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump())
     assert project_response.status_code == 201
     project_id = project_response.json()["data"]["id"]
-    create_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Original Step Name", "project_id": project_id}) # Changed client.post to requests.post
+    create_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Original Step Name", "project_id": project_id})
     assert create_response.status_code == 201
     step_id = create_response.json()["data"]["id"]
     
     # 2. Update the step
     updated_name = "Updated Step Name"
     updated_data = {"name": updated_name, "project_id": project_id}
-    update_response = requests.put(f"{BASE_URL}/steps/{step_id}", headers=headers, json=updated_data) # Changed client.put to requests.put
+    update_response = requests.put(f"{BASE_URL}/steps/{step_id}", headers=headers, json=updated_data)
     
     # Verify the update response
     assert update_response.status_code == 200
@@ -180,9 +180,9 @@ def test_update_nonexistent_step(): # Removed client
     internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
-    response = requests.put(f"{BASE_URL}/steps/99999", headers=headers, json={"name": "Won't work", "project_id": 1}) # Changed client.put to requests.put
+    response = requests.put(f"{BASE_URL}/steps/99999", headers=headers, json={"name": "Won't work", "project_id": 1})
     assert response.status_code == 404
-    assert response.json()["message"] == "Step not found" # Changed "detail" to "message"
+    assert response.json()["message"] == "Step not found"
 
 def test_delete_step(): # Removed client and db_session
     """
@@ -195,15 +195,15 @@ def test_delete_step(): # Removed client and db_session
 
     # 1. Create a project and a step
     project_data = ProjectCreate(name="Project for Delete Test")
-    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump()) # Changed client.post to requests.post
+    project_response = requests.post(f"{BASE_URL}/projects/", headers=headers, json=project_data.model_dump())
     assert project_response.status_code == 201
     project_id = project_response.json()["data"]["id"]
-    create_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Step to Be Deleted", "project_id": project_id}) # Changed client.post to requests.post
+    create_response = requests.post(f"{BASE_URL}/steps/", headers=headers, json={"name": "Step to Be Deleted", "project_id": project_id})
     assert create_response.status_code == 201
     step_id = create_response.json()["data"]["id"]
     
     # 2. Delete the step
-    delete_response = requests.delete(f"{BASE_URL}/steps/{step_id}", headers=headers) # Changed client.delete to requests.delete
+    delete_response = requests.delete(f"{BASE_URL}/steps/{step_id}", headers=headers)
     assert delete_response.status_code == 200
 
     # 3. Verify it's gone from the database
@@ -215,7 +215,7 @@ def test_delete_step(): # Removed client and db_session
         db.close()
     
     # 4. Verify that trying to get it returns 404
-    get_response = requests.get(f"{BASE_URL}/steps/{step_id}", headers=headers) # Changed client.get to requests.get
+    get_response = requests.get(f"{BASE_URL}/steps/{step_id}", headers=headers)
     assert get_response.status_code == 404
 
 def test_delete_nonexistent_step(): # Removed client
@@ -226,6 +226,6 @@ def test_delete_nonexistent_step(): # Removed client
     internal_user_id = login_or_create_user(external_user_id)
     headers = {"X-User-ID": external_user_id, "Content-Type": "application/json"}
 
-    response = requests.delete(f"{BASE_URL}/steps/99999", headers=headers) # Changed client.delete to requests.delete
+    response = requests.delete(f"{BASE_URL}/steps/99999", headers=headers)
     assert response.status_code == 404
-    assert response.json()["message"] == "Step not found" # Changed "detail" to "message"
+    assert response.json()["message"] == "Step not found"

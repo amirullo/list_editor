@@ -325,14 +325,14 @@ CREATE TABLE public.projects (
     id integer NOT NULL,
     name character varying NOT NULL,
     place_description character varying,
-    planned_start_date timestamp with time zone,
-    planned_end_date timestamp with time zone,
-    actual_start_date timestamp with time zone,
-    actual_end_date timestamp with time zone,
+    planned_start_date timestamp without time zone,
+    planned_end_date timestamp without time zone,
+    actual_start_date timestamp without time zone,
+    actual_end_date timestamp without time zone,
     total_materials_price double precision,
     total_workers_price double precision,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone
 );
 
 ALTER TABLE public.projects OWNER TO dev;
@@ -360,16 +360,16 @@ ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 CREATE TABLE public.steps (
     id integer NOT NULL,
     name character varying NOT NULL,
-    planned_start_date timestamp with time zone,
-    planned_end_date timestamp with time zone,
-    actual_start_date timestamp with time zone,
-    actual_end_date timestamp with time zone,
+    planned_start_date timestamp without time zone,
+    planned_end_date timestamp without time zone,
+    actual_start_date timestamp without time zone,
+    actual_end_date timestamp without time zone,
     materials_price double precision,
     workers_price double precision,
     project_id integer NOT NULL,
     parent_step_id integer,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone
 );
 
 ALTER TABLE public.steps OWNER TO dev;

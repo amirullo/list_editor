@@ -276,7 +276,6 @@ list_editor/
 - `DELETE /api/projects/{project_id}/users` - Remove a user from a project by their external ID (project creator only).
 
 ### List Management
-- ~~`POST /api/lists/`~~ - **Deprecated**: Lists are now automatically created when a Step is created.
 - `GET /api/lists/project/{project_id}` - Get all lists for a specific project.
 - `GET /api/lists/{list_id}` - Get specific list details (requires project access).
 - `PUT /api/lists/{list_id}` - Update list information (name, destination_address, description) (requires project access).

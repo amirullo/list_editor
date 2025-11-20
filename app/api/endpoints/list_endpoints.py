@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Depends, status
-from typing import List as TypeList, Dict, Any, Optional
-from app.schemas.list_schema import ListCreate, ListUpdate, ListInDB
+from typing import List as TypeList, Dict, Any
+from app.schemas.list_schema import ListUpdate, ListInDB
 from app.schemas.item_schema import ItemCreate, ItemUpdate, ItemInDB
 from app.schemas.response_schema import ResponseModel
 from app.schemas.lock_schema import LockInDB
@@ -15,25 +15,13 @@ from app.api.dependencies import (
     get_current_user_id,
     require_project_access,
 )
-from pydantic import BaseModel
 from app.utils.logger import logger
 
-class CreateListRequest(BaseModel):
-    list_create: ListCreate
-    items: Optional[TypeList[ItemCreate]] = None
+
 
 router = APIRouter()
 
-@router.post("/", response_model=ResponseModel[ListInDB], status_code=status.HTTP_201_CREATED)
-async def create_list(
-    request: CreateListRequest,
-    list_service: ListService = Depends(get_list_service),
-    user_internal_id: int = Depends(get_current_user_id)
-):
-    new_list = list_service.create_list(request.list_create,
-                                        user_internal_id,
-                                        request.items)
-    return ResponseModel(data=new_list, message="List created successfully")
+
 
 @router.get("/project/{project_id}", response_model=ResponseModel[TypeList[ListInDB]])
 def get_all_lists_for_project(

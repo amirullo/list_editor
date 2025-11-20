@@ -23,7 +23,7 @@ class ListService:
         self.project_repository = project_repository
         self.item_service = item_service
 
-    def create_list(self, list_create: ListCreate, user_internal_id: int, items: Optional[TypeList[ItemCreate]] = None) -> ListInDB: # Changed type to int
+    def create_list(self, list_create: ListCreate, user_internal_id: int, items: Optional[TypeList[ItemCreate]] = None) -> ListInDB:
         project = self.project_repository.get_by_id_for_user(list_create.project_id, user_internal_id)
         if not project:
             raise ForbiddenException("You don't have access to this project")
@@ -52,7 +52,7 @@ class ListService:
         
         return ListInDB.model_validate(response_data)
 
-    def get_all_lists_for_project(self, project_id: int, user_internal_id: int) -> TypeList[ListInDB]: # Changed type to int
+    def get_all_lists_for_project(self, project_id: int, user_internal_id: int) -> TypeList[ListInDB]:
         project = self.project_repository.get_by_id_for_user(project_id, user_internal_id)
         if not project:
             raise ForbiddenException("You don't have access to this project")
@@ -75,7 +75,7 @@ class ListService:
 
         return response_lists
 
-    def get_list(self, list_id: int, user_internal_id: int) -> ListInDB: # Changed type to int
+    def get_list(self, list_id: int, user_internal_id: int) -> ListInDB:
         db_list = self.list_repository.get_by_id_for_user(list_id, user_internal_id)
         if not db_list:
             raise NotFoundException("List not found or you don't have access")
@@ -93,7 +93,7 @@ class ListService:
         
         return ListInDB.model_validate(response_data)
 
-    def update_list(self, list_id: int, list_update: ListUpdate, user_internal_id: int) -> ListInDB: # Changed type to int
+    def update_list(self, list_id: int, list_update: ListUpdate, user_internal_id: int) -> ListInDB:
         db_list = self.list_repository.get_by_id_for_user(list_id, user_internal_id)
         if not db_list:
             raise ForbiddenException("You don't have access to this list")
@@ -111,7 +111,7 @@ class ListService:
         
         return ListInDB.model_validate(updated_list)
 
-    def delete_list(self, list_id: int, user_internal_id: int) -> Dict[str, str]: # Changed type to int
+    def delete_list(self, list_id: int, user_internal_id: int) -> Dict[str, str]:
         db_list = self.list_repository.get_by_id_for_user(list_id, user_internal_id)
         if not db_list:
             raise ForbiddenException("You don't have access to this list")

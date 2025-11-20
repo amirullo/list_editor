@@ -126,7 +126,7 @@ def test_acquire_lock_already_locked():
     # Assert
     assert second_acquire_response.status_code == 409 # Conflict
     second_acquire_response_data = second_acquire_response.json()
-    assert "List is already locked by another user" in second_acquire_response_data["message"] # Changed "detail" to "message"
+    assert "List is already locked by another user" in second_acquire_response_data["message"]
 
 def test_release_lock_not_held_by_user():
     # Arrange
@@ -159,7 +159,7 @@ def test_release_lock_not_held_by_user():
     # Assert
     assert release_response.status_code == 403 # Forbidden
     release_response_data = release_response.json()
-    assert "Lock not held by current user or not found" in release_response_data["message"] # Changed "detail" to "message"
+    assert "Lock not held by current user or not found" in release_response_data["message"]
 
 def test_release_lock_not_found():
     # Arrange
@@ -175,4 +175,4 @@ def test_release_lock_not_found():
     # Assert
     assert release_response.status_code == 404 # Not Found
     release_response_data = release_response.json()
-    assert "List not found" in release_response_data["message"] # Changed "detail" to "message"
+    assert "List not found" in release_response_data["message"]
