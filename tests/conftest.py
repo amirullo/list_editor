@@ -16,15 +16,14 @@ def setup_database():
 def db_session() -> Session:
     """
     Provides a transactional database session for each test function.
-    This creates a transaction, yields a session, and rolls back the transaction after the test.
+    This creates a transaction, yields a session, and commits the transaction after the test.
     """
     connection = engine.connect()
     transaction = connection.begin()
     session = Session(bind=connection)
     yield session
+    session.commit() # Commit changes after each test
     session.close()
-    transaction.commit()
-
     connection.close()
 
 @pytest.fixture(scope="function")

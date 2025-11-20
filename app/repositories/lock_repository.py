@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from app.models.lock_model import Lock
+from uuid import UUID # Import UUID
 
 class LockRepository(BaseRepository[Lock]):
     def __init__(self, db: Session):
@@ -11,9 +12,9 @@ class LockRepository(BaseRepository[Lock]):
     def get_lock_by_list_id(self, list_id: int) -> Optional[Lock]:
         return self.db.query(Lock).filter(Lock.list_id == list_id).first()
 
-    def acquire_lock(self, list_id: int, holder_id: int) -> Optional[Lock]:
+    def acquire_lock(self, list_id: int, holder_internal_id: UUID) -> Optional[Lock]: # Changed type to UUID
         try:
-            lock = Lock(list_id=list_id, holder_id=holder_id)
+            lock = Lock(list_id=list_id, holder_id=holder_internal_id)
             self.db.add(lock)
             self.db.commit()
             self.db.refresh(lock)
@@ -22,10 +23,10 @@ class LockRepository(BaseRepository[Lock]):
             self.db.rollback()
             return None
 
-    def release_lock(self, list_id: int, holder_id: int) -> bool:
+    def release_lock(self, list_id: int, holder_internal_id: UUID) -> bool: # Changed type to UUID
         lock = self.db.query(Lock).filter(
             Lock.list_id == list_id,
-            Lock.holder_id == holder_id
+            Lock.holder_id == holder_internal_id
         ).first()
 
         if lock:

@@ -8,7 +8,7 @@ class Lock(BaseModel):
     
     id = Column(Integer, primary_key=True, index=True)
     list_id = Column(Integer, ForeignKey("lists.id"), nullable=False, unique=True)
-    holder_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    holder_id = Column(Integer, ForeignKey("users.internal_id"), nullable=False)
     acquired_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     list = relationship("List", back_populates="lock")

@@ -3,31 +3,69 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.services.step_service import StepService
 from app.schemas.step_schema import Step, StepCreate, StepUpdate
+from app.schemas.response_schema import ResponseModel # Import ResponseModel
 from typing import List
+from app.api.dependencies import get_external_user_id, get_user_service # Import get_external_user_id and get_user_service
+from app.services.user_service import UserService # Import UserService
 
 router = APIRouter()
 
-@router.post("/", response_model=Step, status_code=status.HTTP_201_CREATED)
-def create_step(step: StepCreate, db: Session = Depends(get_db)):
-    return StepService(db).create_step(step)
+@router.post("/", response_model=ResponseModel[Step], status_code=status.HTTP_201_CREATED)
+def create_step(
+    step: StepCreate,
+    db: Session = Depends(get_db),
+    user_external_id: str = Depends(get_external_user_id), # Get external user ID
+    user_service: UserService = Depends(get_user_service) # Get user service
+):
+    user = user_service.get_or_create_user_by_external_id(user_external_id)
+    new_step = StepService(db).create_step(step, user.internal_id) # Pass user_internal_id
+    return ResponseModel(data=new_step, message="Step created successfully")
 
-@router.get("/{step_id}", response_model=Step)
-def get_step(step_id: int, db: Session = Depends(get_db)):
-    step = StepService(db).get_step(step_id)
+@router.get("/{step_id}", response_model=ResponseModel[Step])
+def get_step(
+    step_id: int,
+    db: Session = Depends(get_db),
+    user_external_id: str = Depends(get_external_user_id), # Get external user ID
+    user_service: UserService = Depends(get_user_service) # Get user service
+):
+    user = user_service.get_or_create_user_by_external_id(user_external_id)
+    step = StepService(db).get_step(step_id, user.internal_id) # Pass user_internal_id
     if not step:
-        raise HTTPException(status_code=4.04, detail="Step not found")
-    return step
-
-@router.get("/", response_model=List[Step])
-def get_all_steps(db: Session = Depends(get_db)):
-    return StepService(db).get_all_steps()
-
-@router.put("/{step_id}", response_model=Step)
-def update_step(step_id: int, step: StepUpdate, db: Session = Depends(get_db)):
-    return StepService(db).update_step(step_id, step)
-
-@router.delete("/{step_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_step(step_id: int, db: Session = Depends(get_db)):
-    if not StepService(db).delete_step(step_id):
         raise HTTPException(status_code=404, detail="Step not found")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return ResponseModel(data=step, message="Step retrieved successfully")
+
+@router.get("/", response_model=ResponseModel[List[Step]])
+def get_all_steps(
+    db: Session = Depends(get_db),
+    user_external_id: str = Depends(get_external_user_id), # Get external user ID
+    user_service: UserService = Depends(get_user_service) # Get user service
+):
+    user = user_service.get_or_create_user_by_external_id(user_external_id)
+    steps = StepService(db).get_all_steps() # No user_internal_id needed for get_all_steps in service
+    return ResponseModel(data=steps, message="Steps retrieved successfully")
+
+@router.put("/{step_id}", response_model=ResponseModel[Step])
+def update_step(
+    step_id: int,
+    step: StepUpdate,
+    db: Session = Depends(get_db),
+    user_external_id: str = Depends(get_external_user_id), # Get external user ID
+    user_service: UserService = Depends(get_user_service) # Get user service
+):
+    user = user_service.get_or_create_user_by_external_id(user_external_id)
+    updated_step = StepService(db).update_step(step_id, step, user.internal_id) # Pass user_internal_id
+    if not updated_step:
+        raise HTTPException(status_code=404, detail="Step not found")
+    return ResponseModel(data=updated_step, message="Step updated successfully")
+
+@router.delete("/{step_id}", response_model=ResponseModel[dict]) # Changed response_model
+def delete_step(
+    step_id: int,
+    db: Session = Depends(get_db),
+    user_external_id: str = Depends(get_external_user_id), # Get external user ID
+    user_service: UserService = Depends(get_user_service) # Get user service
+):
+    user = user_service.get_or_create_user_by_external_id(user_external_id)
+    if not StepService(db).delete_step(step_id, user.internal_id): # Pass user_internal_id
+        raise HTTPException(status_code=404, detail="Step not found")
+    return ResponseModel(data={"status": "success"}, message="Step deleted successfully") # Wrapped in ResponseModel

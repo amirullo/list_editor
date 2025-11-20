@@ -6,6 +6,8 @@ from app.schemas.item_schema import ItemCreate, ItemInDB
 from app.core.exceptions import NotFoundException, ForbiddenException
 from app.models.item_model import Item
 from app.models.list_model import List
+from app.models.project_model import Project
+from app.services.global_role_service import GlobalRoleService # Import GlobalRoleService
 
 @pytest.fixture
 def mock_item_repository():
@@ -16,31 +18,32 @@ def mock_list_repository():
     return Mock()
 
 @pytest.fixture
-def mock_global_role_service():
+def mock_project_repository():
     return Mock()
 
 @pytest.fixture
-def mock_list_role_service():
-    return Mock()
+def mock_global_role_service(): # New fixture for GlobalRoleService
+    return Mock(spec=GlobalRoleService)
 
 @pytest.fixture
-def item_service(mock_item_repository, mock_list_repository, mock_global_role_service, mock_list_role_service):
+def item_service(mock_item_repository, mock_list_repository, mock_project_repository, mock_global_role_service): # Add mock_global_role_service
     return ItemService(
         db=Mock(),
         item_repository=mock_item_repository,
         list_repository=mock_list_repository,
-        global_role_service=mock_global_role_service,
-        list_role_service=mock_list_role_service
+        project_repository=mock_project_repository,
+        global_role_service=mock_global_role_service # Pass the mock
     )
 
-def test_create_item_successfully(item_service, mock_item_repository, mock_list_repository, mock_list_role_service):
+def test_create_item_successfully(item_service, mock_item_repository, mock_list_repository, mock_project_repository):
     # Arrange
     list_id = 1
     user_internal_id = 1
+    project_id = 1
     item_create = ItemCreate(name="Test Item", description="A test item")
     
-    mock_list_role_service.user_has_access_to_list.return_value = True
-    mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List")
+    mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List", project_id=project_id)
+    mock_project_repository.get_by_id_for_user.return_value = Project(id=project_id, name="Test Project")
     
     current_time = datetime.now()
     mock_item_repository.create.return_value = Item(
@@ -60,8 +63,8 @@ def test_create_item_successfully(item_service, mock_item_repository, mock_list_
     created_item = item_service.create_item(list_id, item_create, user_internal_id)
 
     # Assert
-    mock_list_role_service.user_has_access_to_list.assert_called_once_with(user_internal_id, list_id)
     mock_list_repository.get_by_id.assert_called_once_with(list_id)
+    mock_project_repository.get_by_id_for_user.assert_called_once_with(project_id, user_internal_id)
     mock_item_repository.create.assert_called_once_with(list_id, item_create.model_dump(exclude_unset=True))
     
     assert isinstance(created_item, ItemInDB)
@@ -75,40 +78,43 @@ def test_create_item_successfully(item_service, mock_item_repository, mock_list_
     assert created_item.bought == 0
     assert created_item.delivered == 0
 
-def test_create_item_no_access_to_list(item_service, mock_list_role_service):
+def test_create_item_no_access_to_project(item_service, mock_list_repository, mock_project_repository):
     # Arrange
     list_id = 1
     user_internal_id = 1
+    project_id = 1
     item_create = ItemCreate(name="Test Item", description="A test item")
     
-    mock_list_role_service.user_has_access_to_list.return_value = False
+    mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List", project_id=project_id)
+    mock_project_repository.get_by_id_for_user.return_value = None
 
     # Act & Assert
-    with pytest.raises(ForbiddenException, match="No access to this list"):
+    with pytest.raises(ForbiddenException, match="You don't have access to this project"):
         item_service.create_item(list_id, item_create, user_internal_id)
     
-    mock_list_role_service.user_has_access_to_list.assert_called_once_with(user_internal_id, list_id)
+    mock_list_repository.get_by_id.assert_called_once_with(list_id)
+    mock_project_repository.get_by_id_for_user.assert_called_once_with(project_id, user_internal_id)
 
-def test_create_item_list_not_found(item_service, mock_list_repository, mock_list_role_service):
+def test_create_item_list_not_found(item_service, mock_list_repository):
     # Arrange
     list_id = 1
     user_internal_id = 1
     item_create = ItemCreate(name="Test Item", description="A test item")
     
-    mock_list_role_service.user_has_access_to_list.return_value = True
     mock_list_repository.get_by_id.return_value = None
 
     # Act & Assert
     with pytest.raises(NotFoundException, match="List not found"):
         item_service.create_item(list_id, item_create, user_internal_id)
     
-    mock_list_role_service.user_has_access_to_list.assert_called_once_with(user_internal_id, list_id)
+    mock_list_repository.get_by_id.assert_called_once_with(list_id)
 
-def test_get_item_successfully(item_service, mock_item_repository, mock_list_role_service):
+def test_get_item_successfully(item_service, mock_item_repository, mock_list_repository, mock_project_repository):
     # Arrange
     list_id = 1
     item_id = 1
     user_internal_id = 1
+    project_id = 1
     current_time = datetime.now()
     expected_item = Item(
         id=item_id,
@@ -123,14 +129,16 @@ def test_get_item_successfully(item_service, mock_item_repository, mock_list_rol
         delivered=0
     )
     
-    mock_list_role_service.user_has_access_to_list.return_value = True
+    mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List", project_id=project_id)
+    mock_project_repository.get_by_id_for_user.return_value = Project(id=project_id, name="Test Project")
     mock_item_repository.get_by_id.return_value = expected_item
 
     # Act
     retrieved_item = item_service.get_item(list_id, item_id, user_internal_id)
 
     # Assert
-    mock_list_role_service.user_has_access_to_list.assert_called_once_with(user_internal_id, list_id)
+    mock_list_repository.get_by_id.assert_called_once_with(list_id)
+    mock_project_repository.get_by_id_for_user.assert_called_once_with(project_id, user_internal_id)
     mock_item_repository.get_by_id.assert_called_once_with(list_id, item_id)
     
     assert isinstance(retrieved_item, ItemInDB)
@@ -143,32 +151,52 @@ def test_get_item_successfully(item_service, mock_item_repository, mock_list_rol
     assert retrieved_item.bought == 0
     assert retrieved_item.delivered == 0
 
-def test_get_item_no_access_to_list(item_service, mock_list_role_service):
+def test_get_item_no_access_to_project(item_service, mock_list_repository, mock_project_repository):
     # Arrange
     list_id = 1
     item_id = 1
     user_internal_id = 1
+    project_id = 1
     
-    mock_list_role_service.user_has_access_to_list.return_value = False
+    mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List", project_id=project_id)
+    mock_project_repository.get_by_id_for_user.return_value = None
 
     # Act & Assert
-    with pytest.raises(ForbiddenException, match="No access to this list"):
+    with pytest.raises(ForbiddenException, match="You don't have access to this project"):
         item_service.get_item(list_id, item_id, user_internal_id)
     
-    mock_list_role_service.user_has_access_to_list.assert_called_once_with(user_internal_id, list_id)
+    mock_list_repository.get_by_id.assert_called_once_with(list_id)
+    mock_project_repository.get_by_id_for_user.assert_called_once_with(project_id, user_internal_id)
 
-def test_get_item_not_found(item_service, mock_item_repository, mock_list_role_service):
+def test_get_item_list_not_found(item_service, mock_list_repository):
     # Arrange
     list_id = 1
     item_id = 1
     user_internal_id = 1
     
-    mock_list_role_service.user_has_access_to_list.return_value = True
+    mock_list_repository.get_by_id.return_value = None
+
+    # Act & Assert
+    with pytest.raises(NotFoundException, match="List not found"):
+        item_service.get_item(list_id, item_id, user_internal_id)
+    
+    mock_list_repository.get_by_id.assert_called_once_with(list_id)
+
+def test_get_item_not_found(item_service, mock_item_repository, mock_list_repository, mock_project_repository):
+    # Arrange
+    list_id = 1
+    item_id = 1
+    user_internal_id = 1
+    project_id = 1
+    
+    mock_list_repository.get_by_id.return_value = List(id=list_id, name="Test List", project_id=project_id)
+    mock_project_repository.get_by_id_for_user.return_value = Project(id=project_id, name="Test Project")
     mock_item_repository.get_by_id.return_value = None
 
     # Act & Assert
     with pytest.raises(NotFoundException, match="Item not found"):
         item_service.get_item(list_id, item_id, user_internal_id)
     
-    mock_list_role_service.user_has_access_to_list.assert_called_once_with(user_internal_id, list_id)
+    mock_list_repository.get_by_id.assert_called_once_with(list_id)
+    mock_project_repository.get_by_id_for_user.assert_called_once_with(project_id, user_internal_id)
     mock_item_repository.get_by_id.assert_called_once_with(list_id, item_id)

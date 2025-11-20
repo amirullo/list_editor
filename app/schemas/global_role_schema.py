@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict, Field
 from app.models.global_role_model import GlobalRoleType
 from datetime import datetime
+from typing import Optional
 
 class GlobalRoleBase(BaseModel):
-    user_internal_id: int = Field(..., alias='user_id')
     role: GlobalRoleType = Field(..., alias='role_type')
 
     model_config = ConfigDict(
@@ -19,7 +19,12 @@ class GlobalRoleUpdate(GlobalRoleBase):
 
 class GlobalRoleInDB(GlobalRoleBase):
     id: int
+    user_internal_id: int = Field(..., alias='user_id') # Explicitly add user_internal_id
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class GlobalRoleResponse(BaseModel):
+    message: str
+    data: Optional[GlobalRoleInDB] = None

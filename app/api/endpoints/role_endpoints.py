@@ -1,99 +1,75 @@
-
-from fastapi import APIRouter, Depends
-from typing import List
-from app.schemas.global_role_schema import GlobalRoleCreate, GlobalRoleUpdate, GlobalRoleInDB
-from app.schemas.list_role_schema import ListRoleCreate, ListRoleInDB
-from app.schemas.response_schema import ResponseModel
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.core.db import get_db
+from app.schemas.global_role_schema import GlobalRoleCreate, GlobalRoleInDB, GlobalRoleResponse
 from app.services.global_role_service import GlobalRoleService
-from app.services.list_role_service import ListRoleService
-from app.api.dependencies import get_global_role_service, get_list_role_service, get_current_user_id
-from app.core.exceptions import PermissionException, NotFoundException, ForbiddenException
-from app.models.global_role_model import GlobalRoleType
-from app.models.list_role_model import ListRoleType
+from app.api.dependencies import get_global_role_service, get_current_user_id
+# from uuid import UUID # Removed UUID import
+from app.utils.logger import logger # Import logger
 
 router = APIRouter()
 
-# Global Role Endpoints
-
-@router.post("/global", response_model=ResponseModel[GlobalRoleInDB])
-async def create_global_role(
-    role: GlobalRoleCreate,
-    global_role_service: GlobalRoleService = Depends(get_global_role_service),
-    user_internal_id: int = Depends(get_current_user_id)
+@router.post("/roles/global", response_model=GlobalRoleResponse, status_code=status.HTTP_201_CREATED)
+def create_global_role(
+    global_role_create: GlobalRoleCreate,
+    user_internal_id: int = Depends(get_current_user_id), # Changed type to int
+    global_role_service: GlobalRoleService = Depends(get_global_role_service)
 ):
-    created_role = global_role_service.create_role(role.user_internal_id, role.role)
-    return ResponseModel(data=created_role, message="Global role created successfully")
+    """
+    Create or update a global role for the authenticated user.
+    """
+    logger.info(f"create_global_role: user_internal_id={user_internal_id}, role_type={global_role_create.role}") # Changed to global_role_create.role
+    try:
+        role = global_role_service.create_role(user_internal_id, global_role_create.role) # Changed to global_role_create.role
+        return GlobalRoleResponse(
+            message="Global role created/updated successfully",
+            data=GlobalRoleInDB.model_validate(role)
+        )
+    except Exception as e:
+        logger.error(f"create_global_role: Error creating/updating global role: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.get("/global/{user_internal_id}", response_model=ResponseModel[GlobalRoleInDB])
-async def get_global_role(
-    user_internal_id: int,
-    global_role_service: GlobalRoleService = Depends(get_global_role_service),
-    current_user_internal_id: int = Depends(get_current_user_id)
+@router.get("/roles/global/{target_user_internal_id}", response_model=GlobalRoleResponse)
+def get_global_role(
+    target_user_internal_id: int, # Changed type to int
+    user_internal_id: int = Depends(get_current_user_id), # Authenticated user, changed type to int
+    global_role_service: GlobalRoleService = Depends(get_global_role_service)
 ):
-    role = global_role_service.get_role(user_internal_id)
-    if role:
-        return ResponseModel(data=role, message="Global role retrieved successfully")
-    raise NotFoundException("Global role not found")
+    """
+    Get the global role for a specific user.
+    """
+    logger.info(f"get_global_role: target_user_internal_id={target_user_internal_id}, authenticated_user_internal_id={user_internal_id}")
+    # In a real application, you might want to add authorization here
+    # to ensure that the authenticated user has permission to view
+    # another user's global role. For now, we'll allow it.
+    
+    role = global_role_service.get_role(target_user_internal_id)
+    if not role:
+        logger.warning(f"get_global_role: Global role not found for user {target_user_internal_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global role not found for this user")
+    
+    return GlobalRoleResponse(
+        message="Global role retrieved successfully",
+        data=GlobalRoleInDB.model_validate(role)
+    )
 
-# @router.put("/global/{user_internal_id}", response_model=ResponseModel[GlobalRoleInDB])
-# async def update_global_role(
-#     user_internal_id: int,
-#     role_update: GlobalRoleUpdate,
-#     global_role_service: GlobalRoleService = Depends(get_global_role_service),
-#     current_user_internal_id: int = Depends(get_current_user_id)
-# ):
-#     updated_role = global_role_service.update_role(user_internal_id, role_update.role_type)
-#     return ResponseModel(data=updated_role, message="Global role updated successfully")
-
-# @router.delete("/global/{user_internal_id}", response_model=ResponseModel[dict])
-# async def delete_global_role(
-#     user_internal_id: int,
-#     global_role_service: GlobalRoleService = Depends(get_global_role_service),
-#     current_user_internal_id: int = Depends(get_current_user_id)
-# ):
-#     global_role_service.delete_role(user_internal_id)
-#     return ResponseModel(data={"user_internal_id": user_internal_id}, message="Global role deleted successfully")
-
-# List Role Endpoints
-
-# @router.post("/list", response_model=ResponseModel[ListRoleInDB])
-# async def create_list_role(
-#     role: ListRoleCreate,
-#     list_role_service: ListRoleService = Depends(get_list_role_service),
-#     current_user_internal_id: int = Depends(get_current_user_id)
-# ):
-#     created_role = list_role_service.add_user_to_list(role.user_internal_id, role.list_id, role.role_type)
-#     return ResponseModel(data=created_role, message="List role created successfully")
-
-@router.get("/list/{list_id}/{user_internal_id}", response_model=ResponseModel[ListRoleInDB])
-async def get_list_role(
-    list_id: int,
-    user_internal_id: int,
-    list_role_service: ListRoleService = Depends(get_list_role_service),
-    current_user_internal_id: int = Depends(get_current_user_id)
+@router.delete("/roles/global/{target_user_internal_id}", response_model=GlobalRoleResponse)
+def delete_global_role(
+    target_user_internal_id: int,
+    user_internal_id: int = Depends(get_current_user_id), # Authenticated user
+    global_role_service: GlobalRoleService = Depends(get_global_role_service)
 ):
-    role = list_role_service.get_user_role_in_list(user_internal_id, list_id)
-    if role:
-        return ResponseModel(data=ListRoleInDB(user_internal_id=user_internal_id, list_id=list_id, role_type=role), message="List role retrieved successfully")
-    raise NotFoundException("List role not found")
-
-# @router.put("/list/{list_id}/{user_internal_id}", response_model=ResponseModel[ListRoleInDB])
-# async def update_list_role(
-#     list_id: int,
-#     user_internal_id: int,
-#     role_update: ListRoleUpdate,
-#     list_role_service: ListRoleService = Depends(get_list_role_service),
-#     current_user_internal_id: int = Depends(get_current_user_id)
-# ):
-#     updated_role = list_role_service.update_user_role_in_list(user_internal_id, list_id, role_update.role_type)
-#     return ResponseModel(data=updated_role, message="List role updated successfully")
-
-# @router.delete("/list/{list_id}/{user_internal_id}", response_model=ResponseModel[dict])
-# async def delete_list_role(
-#     list_id: int,
-#     user_internal_id: int,
-#     list_role_service: ListRoleService = Depends(get_list_role_service),
-#     current_user_internal_id: int = Depends(get_current_user_id)
-# ):
-#     list_role_service.remove_user_from_list(user_internal_id, list_id)
-#     return ResponseModel(data={"user_internal_id": user_internal_id, "list_id": list_id}, message="List role deleted successfully")
+    """
+    Delete the global role for a specific user.
+    """
+    logger.info(f"delete_global_role: target_user_internal_id={target_user_internal_id}, authenticated_user_internal_id={user_internal_id}")
+    
+    deleted = global_role_service.delete_role(target_user_internal_id)
+    if not deleted:
+        logger.warning(f"delete_global_role: Global role not found for user {target_user_internal_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global role not found for this user")
+    
+    return GlobalRoleResponse(
+        message="Global role deleted successfully",
+        data=None
+    )

@@ -1,72 +1,80 @@
 
 # List Editor
 
-A list management application that provides secure, participant-based collaboration on shared lists.
+A list management application that provides secure, project-based collaboration on shared lists and steps.
 
 ## Overview
 
-List Editor is a collaborative list management system designed for teams and individuals who need to share and manage lists efficiently. Built with modern Python technologies, it provides a robust API for creating, sharing, and managing lists with collaboration features.
+List Editor is a collaborative project management system designed for teams and individuals who need to share and manage projects, lists, and steps efficiently. Built with modern Python technologies, it provides a robust API for creating, sharing, and managing projects with integrated collaboration features.
 
 ### Key Highlights
 
-- **Participant-based Access Control**: Fine-grained permissions for list creators and participants
-- **Collaboration**: Concurrent editing with locking mechanisms
+- **Project-based Access Control**: Fine-grained permissions for project creators and participants, inherited by associated lists and steps.
+- **Collaboration**: Concurrent editing with locking mechanisms for lists.
 - **User ID-based Authentication**: Secure login with internal and external user IDs.
-- **RESTful API**: Clean, well-documented API endpoints
-- **Scalable Architecture**: Modular design following clean architecture principles
+- **RESTful API**: Clean, well-documented API endpoints.
+- **Scalable Architecture**: Modular design following clean architecture principles.
 
 ## Features
 
 ### Core Functionality
 
+#### Project Management
+- **Create Projects**: Users can create new projects.
+- **Project Ownership**: Each project has a designated creator with special privileges.
+- **Participant Management**: Project creators can add/remove participants to their projects.
+- **Project Updates**: All participants can modify project metadata.
+- **Project Deletion**: Only creators can permanently delete projects.
+- **Project Details**: Projects can include a name, planned and actual periods, total material and worker prices, and a place description.
+
 #### List Management
--  **Create Lists**: Users can create new lists with optional initial items
--  **List Ownership**: Each list has a designated creator with special privileges
--  **Participant Management**: Creators can add/remove participants to their lists
--  **List Updates**: All participants can modify list metadata
--  **List Deletion**: Only creators can permanently delete lists
--  **List Details**: Lists can include total price, total delivery period, and a flat address.
--  **Store Locations**: Lists can include a map with store addresses.
+- **Create Lists**: Users can create new lists associated with a project.
+- **List Access**: Access to lists is inherited from the parent project.
+- **List Updates**: All project participants can modify list metadata.
+- **List Deletion**: Only project participants with appropriate permissions can delete lists.
+- **List Details**: Lists can include total price, total delivery period, and a flat address.
+- **Store Locations**: Lists can include a map with store addresses.
 
 #### Item Management
--  **Add Items**: All participants can add items to shared lists
--  **Update Items**: Modify item details (name, category, quantity, price)
--  **Delete Items**: Remove items from lists
--  **Item Categorization**: Organize items by categories
--  **Price Tracking**: Track item prices and quantities
--  **Link Parsing**: Parse item links to extract photo, price, delivery price, and delivery period.
--  **Store Information**: Items can be associated with a store, including its address and distance.
--  **Item Status**: Items have flags for "approved" (worker), "bought" (client/worker), and "delivered" (worker).
+- **Add Items**: All project participants can add items to lists within their accessible projects.
+- **Update Items**: Modify item details (name, category, quantity, price).
+- **Delete Items**: Remove items from lists.
+- **Item Categorization**: Organize items by categories.
+- **Price Tracking**: Track item prices and quantities.
+- **Link Parsing**: Parse item links to extract photo, price, delivery price, and delivery period.
+- **Store Information**: Items can be associated with a store, including its address and distance.
+- **Item Status**: Items have flags for "approved" (worker), "bought" (client/worker), and "delivered" (worker).
 
-#### Project Management
-- **Project Management**: Define a project with a name, planned and actual periods, total material and worker prices, and a place description.
-- **Step Management**: Break down a project into steps, each with a name, planned and actual periods, material and worker prices, required items, and photos/videos of the results. Steps can have a parent step.
-- **Gantt Chart**: Visualize the project timeline with a Gantt diagram.
+#### Step Management
+- **Create Steps**: Break down a project into steps, each with a name, planned and actual periods, material and worker prices, required items, and photos/videos of the results.
+- **Step Access**: Access to steps is inherited from the parent project.
+- **Hierarchical Steps**: Steps can have a parent step, allowing for complex project structures.
+- **Gantt Chart**: Visualize the project timeline with a Gantt diagram (conceptual, not implemented in API).
 
 #### Collaboration Features
--  **Participant Access**: Share lists with specific users
--  **Concurrent Editing**: Multiple users can edit simultaneously
--  **Lock Management**: FIFO locking system prevents conflicts
--  **Real-time Notifications**: In-app notifications for list changes
--  **Activity Tracking**: Audit trail for all list modifications
+- **Project Participant Access**: Share projects with specific users, granting them access to all associated lists and steps.
+- **Concurrent Editing**: Multiple users can edit lists simultaneously.
+- **Lock Management**: FIFO locking system prevents conflicts for lists.
+- **Real-time Notifications**: In-app notifications for list changes (conceptual, not fully implemented in API).
+- **Activity Tracking**: Audit trail for all modifications (conceptual, not fully implemented in API).
 
 #### Security & Access Control
--  **User ID Authentication**: Secure login using an external ID from the `X-User-ID` header, with all subsequent operations using an internal integer ID.
--  **Role-based Permissions**: Creator vs. participant privilege levels
--  **Access Validation**: Strict access control on all operations
--  **Data Isolation**: Users only see lists they have access to
--  **Participant Management**: Add and remove users from lists (creator only)
+- **User ID Authentication**: Secure login using an external ID from the `X-User-ID` header, with all subsequent operations using an internal integer ID.
+- **Role-based Permissions**: Project-level roles (`CREATOR`, `USER`) define access.
+- **Access Inheritance**: Lists and Steps inherit access permissions from their parent Project.
+- **Access Validation**: Strict access control on all operations.
+- **Data Isolation**: Users only see projects, lists, and steps they have access to.
 
 #### Technical & Utility Features
--  **RESTful API**: Clean, intuitive API design
--  **Data Validation**: Comprehensive input validation with Pydantic
--  **Error Handling**: Detailed error responses and logging
--  **Database Persistence**: PostgreSQL with SQLAlchemy ORM
--  **Automatic Timestamps**: Creation and modification tracking
--  **CORS Support**: Cross-origin resource sharing enabled
--  **Containerization**: Docker support for easy deployment
--  **Logging**: Centralized application logging and monitoring
--  **Helper Functions**: Common utility functions and custom validators
+- **RESTful API**: Clean, intuitive API design.
+- **Data Validation**: Comprehensive input validation with Pydantic.
+- **Error Handling**: Detailed error responses and logging.
+- **Database Persistence**: PostgreSQL with SQLAlchemy ORM.
+- **Automatic Timestamps**: Creation and modification tracking.
+- **CORS Support**: Cross-origin resource sharing enabled.
+- **Containerization**: Docker support for easy deployment.
+- **Logging**: Centralized application logging and monitoring.
+- **Helper Functions**: Common utility functions and custom validators.
 
 ## Architecture
 
@@ -89,44 +97,44 @@ The application follows a layered architecture pattern with clear separation of 
 ```
 
 #### 1. API Layer (`app/api/`)
-- **Endpoints**: FastAPI route handlers for HTTP requests
-- **Dependencies**: Dependency injection for services and authentication
-- **Request/Response**: HTTP request processing and response formatting
+- **Endpoints**: FastAPI route handlers for HTTP requests.
+- **Dependencies**: Dependency injection for services and authentication.
+- **Request/Response**: HTTP request processing and response formatting.
 
 #### 2. Schema Layer (`app/schemas/`)
-- **Data Validation**: Pydantic models for request/response validation
-- **Type Safety**: Strong typing for API contracts
-- **Serialization**: Data transformation between layers
+- **Data Validation**: Pydantic models for request/response validation.
+- **Type Safety**: Strong typing for API contracts.
+- **Serialization**: Data transformation between layers.
 
 #### 3. Service Layer (`app/services/`)
-- **Business Logic**: Core application logic and workflows
-- **Data Orchestration**: Coordination between multiple repositories
-- **Validation**: Business rule validation and enforcement
-- **Notifications**: User notification and messaging services
+- **Business Logic**: Core application logic and workflows.
+- **Data Orchestration**: Coordination between multiple repositories.
+- **Validation**: Business rule validation and enforcement.
+- **Notifications**: User notification and messaging services.
 
 #### 4. Repository Layer (`app/repositories/`)
-- **Data Access**: Database operations and query management
-- **CRUD Operations**: Create, Read, Update, Delete operations for entities
-- **Query Optimization**: Efficient database queries and relationships
-- **Transaction Management**: Database transaction handling
+- **Data Access**: Database operations and query management.
+- **CRUD Operations**: Create, Read, Update, Delete operations for entities.
+- **Query Optimization**: Efficient database queries and relationships.
+- **Transaction Management**: Database transaction handling.
 
 #### 5. Model Layer (`app/models/`)
-- **Database Schema**: SQLAlchemy models defining table structures
-- **Relationships**: Entity relationships and foreign key constraints
-- **Data Integrity**: Database-level constraints and validations
+- **Database Schema**: SQLAlchemy models defining table structures.
+- **Relationships**: Entity relationships and foreign key constraints.
+- **Data Integrity**: Database-level constraints and validations.
 
 #### 6. Core Layer (`app/core/`)
-- **Configuration**: Application settings and environment management
-- **Database**: Database connection and session management
-- **Exceptions**: Custom exception classes and error handling
+- **Configuration**: Application settings and environment management.
+- **Database**: Database connection and session management.
+- **Exceptions**: Custom exception classes and error handling.
 
 ### Design Principles
 
-- **KISS (Keep It Simple, Stupid)**: Simple, maintainable solutions
-- **YAGNI (You Aren't Gonna Need It)**: Implement only what's needed
-- **Open/Closed Principle**: Extensible design with minimal modifications
-- **Single Responsibility**: Each component has a single, well-defined purpose
-- **Dependency Injection**: Loose coupling through dependency injection
+- **KISS (Keep It Simple, Stupid)**: Simple, maintainable solutions.
+- **YAGNI (You Aren't Gonna Need It)**: Implement only what's needed.
+- **Open/Closed Principle**: Extensible design with minimal modifications.
+- **Single Responsibility**: Each component has a single, well-defined purpose.
+- **Dependency Injection**: Loose coupling through dependency injection.
 
 ## Getting Started
 
@@ -190,10 +198,9 @@ list_editor/
 │   │       ├── __init__.py
 │   │       ├── list_endpoints.py
 │   │       ├── user_endpoints.py
-│   │       ├── role_endpoints.py
-│   │       ├── sync_endpoints.py
-│   │       ├── project_endpoints.py
-│   │       └── step_endpoints.py
+│   │       ├── project_endpoints.py # Updated
+│   │       ├── step_endpoints.py    # Updated
+│   │       └── sync_endpoints.py
 │   │
 │   ├── core/                   # Core configuration and setup
 │   │   ├── __init__.py
@@ -209,9 +216,9 @@ list_editor/
 │   │   ├── user_model.py       # User entity model
 │   │   ├── lock_model.py       # Lock entity model
 │   │   ├── global_role_model.py # Global Role entity model
-│   │   ├── list_role_model.py  # List Role entity model
-│   │   ├── list_user_model.py  # List-User association model
 │   │   ├── project_model.py    # Project entity model
+│   │   ├── project_user_model.py # New: Project-User association model
+│   │   ├── project_role_model.py # New: Project Role entity model
 │   │   └── step_model.py       # Step entity model
 │   │
 │   ├── repositories/           # Data access layer
@@ -220,8 +227,8 @@ list_editor/
 │   │   ├── list_repository.py  # List-specific data operations
 │   │   ├── item_repository.py  # Item-specific data operations
 │   │   ├── user_repository.py  # User-specific data operations
-│   │   ├── role_repository.py  # Role-specific data operations
 │   │   ├── project_repository.py # Project-specific data operations
+│   │   ├── project_user_repository.py # New: Project-User association repository
 │   │   └── step_repository.py    # Step-specific data operations
 │   │
 │   ├── schemas/                # Pydantic schemas for validation
@@ -229,7 +236,6 @@ list_editor/
 │   │   ├── list_schema.py      # List request/response schemas
 │   │   ├── item_schema.py      # Item request/response schemas
 │   │   ├── user_schema.py      # User request/response schemas
-│   │   ├── role_schema.py      # Role request/response schemas
 │   │   ├── response_schema.py  # Generic response schemas
 │   │   ├── project_schema.py   # Project request/response schemas
 │   │   └── step_schema.py      # Step request/response schemas
@@ -238,7 +244,6 @@ list_editor/
 │   │   ├── __init__.py
 │   │   ├── list_service.py     # List business logic
 │   │   ├── item_service.py     # Item business logic
-│   │   ├── role_service.py     # Role business logic
 │   │   ├── lock_service.py     # Concurrency control
 │   │   ├── notification_service.py
 │   │   ├── project_service.py  # Project business logic
@@ -257,114 +262,112 @@ list_editor/
 ### User Authentication
 - `POST /api/users/login` - Login with an external user ID to get an internal user ID.
 
-### List Management
-- `POST /api/lists/` - Create a new list
-- `GET /api/lists/` - Get all lists for authenticated user
-- `GET /api/lists/{list_id}` - Get specific list details
-- `PUT /api/lists/{list_id}` - Update list information
-- `DELETE /api/lists/{list_id}` - Delete list (creator only)
+### Project Management
+- `POST /api/projects/` - Create a new project.
+- `GET /api/projects/` - Get all projects for the authenticated user.
+- `GET /api/projects/{project_id}` - Get specific project details.
+- `PUT /api/projects/{project_id}` - Update project information.
+- `DELETE /api/projects/{project_id}` - Delete project (creator only).
+- `POST /api/projects/{project_id}/users` - Add a user to a project by their external ID (project creator only).
+- `DELETE /api/projects/{project_id}/users` - Remove a user from a project by their external ID (project creator only).
 
-### User Management
-- `POST /api/lists/{list_id}/users` - Add user to list by their external ID (creator only).
-- `DELETE /api/lists/{list_id}/users/{user_to_remove_external_id}` - Remove user from list by their external ID (creator only).
+### List Management
+- `POST /api/lists/` - Create a new list, associated with a `project_id`.
+- `GET /api/lists/project/{project_id}` - Get all lists for a specific project.
+- `GET /api/lists/{list_id}` - Get specific list details (requires project access).
+- `PUT /api/lists/{list_id}` - Update list information (requires project access).
+- `DELETE /api/lists/{list_id}` - Delete list (requires project access).
 
 ### Item Management
-- `POST /api/lists/{list_id}/items` - Create new item in list
-- `GET /api/lists/{list_id}/items` - Get all items in list
-- `PUT /api/lists/{list_id}/items/{item_id}` - Update item
-- `DELETE /api/lists/{list_id}/items/{item_id}` - Delete item
-
-### Project Management
-- `POST /api/projects/` - Create a new project
-- `GET /api/projects/` - Get all projects
-- `GET /api/projects/{project_id}` - Get specific project details
-- `PUT /api/projects/{project_id}` - Update project information
-- `DELETE /api/projects/{project_id}` - Delete project
+- `POST /api/lists/{list_id}/items` - Create new item in list (requires project access).
+- `GET /api/lists/{list_id}/items` - Get all items in list (requires project access).
+- `PUT /api/lists/{list_id}/items/{item_id}` - Update item (requires project access).
+- `DELETE /api/lists/{list_id}/items/{item_id}` - Delete item (requires project access).
 
 ### Step Management
-- `POST /api/steps/` - Create a new step
-- `GET /api/steps/` - Get all steps
-- `GET /api/steps/{step_id}` - Get specific step details
-- `PUT /api/steps/{step_id}` - Update step information
-- `DELETE /api/steps/{step_id}` - Delete step
+- `POST /api/steps/` - Create a new step, associated with a `project_id`.
+- `GET /api/steps/` - Get all steps (requires project access).
+- `GET /api/steps/{step_id}` - Get specific step details (requires project access).
+- `PUT /api/steps/{step_id}` - Update step information (requires project access).
+- `DELETE /api/steps/{step_id}` - Delete step (requires project access).
 
 ### Locking System
-- `POST /api/lists/{list_id}/lock` - Acquire lock on list
-- `DELETE /api/lists/{list_id}/lock` - Release lock on list
+- `POST /api/lists/{list_id}/lock` - Acquire lock on list (requires project access).
+- `DELETE /api/lists/{list_id}/lock` - Release lock on list (requires project access).
 
 ### Synchronization
-- `POST  /api/lists/{list_id}/sync` - Manual synchronization endpoint
-- `GET /api/sync/notifications` - Get notifications for changes
+- `POST  /api/lists/{list_id}/sync` - Manual synchronization endpoint.
+- `GET /api/sync/notifications` - Get notifications for changes.
 
 ### Role Management
 - `POST /api/roles/global` - Create a new global role for a user.
 - `GET /api/roles/global/{user_internal_id}` - Get the global role for a user.
-- `GET /api/roles/list/{list_id}/{user_internal_id}` - Get the list role for a user.
 
 ## Data Models
 
 ### User
-- id: Integer primary key (internal ID)
-- external_id: String (unique, for login)
-
-### List
-- id: Integer primary key
-- name: String (required)
-- description: Text (optional)
-- created_at: Timestamp
-- updated_at: Timestamp
-
-### Item
-- id: Integer primary key
-- name: String (required)
-- description: Text (optional)
-- quantity: Integer (default: 1)
-- price: Float (optional)
-- category: String (optional)
-- list_id: Foreign key to List
+- `id`: Integer primary key (internal ID).
+- `external_id`: String (unique, for login).
 
 ### Project
-- id: Integer primary key
-- name: String (required)
-- place_description: String (optional)
-- planned_start_date: Timestamp (optional)
-- planned_end_date: Timestamp (optional)
-- actual_start_date: Timestamp (optional)
-- actual_end_date: Timestamp (optional)
-- total_materials_price: Float (optional)
-- total_workers_price: Float (optional)
+- `id`: Integer primary key.
+- `name`: String (required).
+- `place_description`: String (optional).
+- `planned_start_date`: Timestamp (optional).
+- `planned_end_date`: Timestamp (optional).
+- `actual_start_date`: Timestamp (optional).
+- `actual_end_date`: Timestamp (optional).
+- `total_materials_price`: Float (optional).
+- `total_workers_price`: Float (optional).
+
+### ProjectUser (Association)
+- `user_id`: Foreign key to User (internal ID).
+- `project_id`: Foreign key to Project.
+- `role_type`: Enum (`CREATOR`, `USER`).
+
+### ProjectRole
+- `id`: Integer primary key.
+- `role_type`: Enum (`CREATOR`, `USER`).
+- `description`: String (optional).
+
+### List
+- `id`: Integer primary key.
+- `name`: String (required).
+- `description`: Text (optional).
+- `project_id`: Foreign key to Project (required).
+- `created_at`: Timestamp.
+- `updated_at`: Timestamp.
+
+### Item
+- `id`: Integer primary key.
+- `name`: String (required).
+- `description`: Text (optional).
+- `quantity`: Integer (default: 1).
+- `price`: Float (optional).
+- `category`: String (optional).
+- `list_id`: Foreign key to List.
 
 ### Step
-- id: Integer primary key
-- name: String (required)
-- planned_start_date: Timestamp (optional)
-- planned_end_date: Timestamp (optional)
-- actual_start_date: Timestamp (optional)
-- actual_end_date: Timestamp (optional)
-- materials_price: Float (optional)
-- workers_price: Float (optional)
-- project_id: Foreign key to Project
-- parent_step_id: Foreign key to Step (self-referencing)
-
-### ListUser (Association)
-- list_id: Foreign key to List
-- user_id: Foreign key to User (internal ID)
-- role_type: Enum (CREATOR, USER)
+- `id`: Integer primary key.
+- `name`: String (required).
+- `planned_start_date`: Timestamp (optional).
+- `planned_end_date`: Timestamp (optional).
+- `actual_start_date`: Timestamp (optional).
+- `actual_end_date`: Timestamp (optional).
+- `materials_price`: Float (optional).
+- `workers_price`: Float (optional).
+- `project_id`: Foreign key to Project.
+- `parent_step_id`: Foreign key to Step (self-referencing).
 
 ### Lock
-- id: Integer primary key
-- list_id: Foreign key to List
-- holder_id: Foreign key to User (internal ID)
+- `id`: Integer primary key.
+- `list_id`: Foreign key to List.
+- `holder_id`: Foreign key to User (internal ID).
 
 ### GlobalRole
-- id: Integer primary key
-- user_id: Foreign key to User (internal ID)
-- role_type: Enum (CLIENT, WORKER)
-
-### ListRole
-- id: Integer primary key
-- role_type: Enum (CREATOR, USER)
-- description: String (optional)
+- `id`: Integer primary key.
+- `user_id`: Foreign key to User (internal ID).
+- `role_type`: Enum (`CLIENT`, `WORKER`).
 
 
 ## Error Handling
@@ -390,34 +393,37 @@ list_editor/
 ## Roles 
 
 ### Global roles
-- CLIENT - only he can change (WORKER can't change) the price of an item.
-- WORKER - only he can change (CLIENT can't change) the quantity of an item.
+- `CLIENT`: Can change the price of an item.
+- `WORKER`: Can change the quantity, approved, bought, and delivered status of an item.
 
+### Project roles (Global role restrictions override Project role privileges)
+- `CREATOR`: The user who created the project. Has full access to the project and all associated lists and steps. Can add/remove other users to/from the project.
+- `USER`: An additional user added to the project. Has access to the project and all associated lists and steps.
 
-### List roles (Global role restrictions override List role privileges)
-- CREATOR - who created the list. only he can delete the list. he has full access to the list and corresponding items to the list, until he has restrictions on Global role level.
-- USER - additional users that can read everything in the list and corresponding items to the list, and can modify the list and its items, until he has restrictions on Global role level.
+### Access Inheritance
+- **Lists** inherit access from their parent **Project**.
+- **Steps** inherit access from their parent **Project**.
 
 ### Examples: 
-- CREATOR + CLIENT: Can do everything including change price, but NOT quantity
-- CREATOR + WORKER: Can do everything including change quantity, but NOT price  
-- USER + CLIENT: Can modify the list and its items, including price, but NOT quantity
-- USER + WORKER: Can modify the list and its items, including quantity, but NOT price
+- `CREATOR` + `CLIENT`: Can manage the project, lists, and steps. Can change item prices, but not item quantities or status fields (`approved`, `bought`, `delivered`).
+- `CREATOR` + `WORKER`: Can manage the project, lists, and steps. Can change item quantities and status fields, but not item prices.
+- `USER` + `CLIENT`: Can access the project, lists, and steps. Can change item prices, but not item quantities or status fields.
+- `USER` + `WORKER`: Can access the project, lists, and steps. Can change item quantities and status fields, but not item prices.
 
 ## Business workflow
 
 ### A potential workflow:  
-1. Project Planning: user defines project by creating a Project and breaking it down into hierarchical Steps. Each Step would have a description of the materials needed.
-2. Material Aggregation: You create one or more Lists (e.g., "Hardware Store List," "Online Plumbing Orders") to gather all the Items required across all your Steps.
-3. Collaborative Purchasing: You use the List entity's collaboration features to manage the purchasing process. A CLIENT can approve prices, and a WORKER can update quantities and mark items as "bought" or "delivered."
-4. Work Execution: Once the Items for a Step are marked as "delivered" in your List, the work on that Step can commence.  
+1. **Project Planning**: A user defines a project by creating a Project and breaking it down into hierarchical Steps. Each Step would have a description of the materials needed.
+2. **Material Aggregation**: Within the project, you create one or more Lists (e.g., "Hardware Store List," "Online Plumbing Orders") to gather all the Items required across all your Steps.
+3. **Collaborative Purchasing**: Project participants use the List entity's collaboration features to manage the purchasing process. A `CLIENT` can approve prices, and a `WORKER` can update quantities and mark items as "bought" or "delivered."
+4. **Work Execution**: Once the Items for a Step are marked as "delivered" in your List, the work on that Step can commence.  
 
 This approach creates a clear separation of concerns:
-•Project / Step: Manages the work and schedule.
-•List / Item: Manages the materials and procurement.
+- **Project / Step**: Manages the work and schedule.
+- **List / Item**: Manages the materials and procurement.
 
-On front-end there would be a project of maintenance. That would consist of many steps of maintenance. there are steps that could be paralleled, or be in sequence. there are several abstractions of steps.
-List entity is used as the "shopping cart" for maintenance project. The Step entity defines what work needs to be done, and the List entity helps manage the acquisition of materials (Items) needed for that work.
+On the front-end, there would be a project of maintenance. That would consist of many steps of maintenance. There are steps that could be paralleled, or be in sequence. There are several abstractions of steps.
+The List entity is used as the "shopping cart" for a maintenance project. The Step entity defines what work needs to be done, and the List entity helps manage the acquisition of materials (Items) needed for that work.
 
 For example: 
 - Project1:  
