@@ -19,6 +19,16 @@ class GlobalRoleService:
         logger.info(f"Created/updated global role {role_type.value} for user {user_internal_id}")
         return role
 
+    def delete_role(self, user_internal_id: int) -> bool:
+        """Delete user's global role"""
+        logger.info(f"Attempting to delete global role for user {user_internal_id}")
+        deleted = self.global_role_repository.delete(user_internal_id)
+        if deleted:
+            logger.info(f"Successfully deleted global role for user {user_internal_id}")
+        else:
+            logger.warning(f"Global role not found for deletion for user {user_internal_id}")
+        return deleted
+
     def check_permission(self, user_internal_id: int, required_role: GlobalRoleType) -> bool: # Changed type to int
         """Check if user has required global role"""
         user_role = self.get_role(user_internal_id)

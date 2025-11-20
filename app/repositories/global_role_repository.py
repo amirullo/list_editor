@@ -1,13 +1,13 @@
 from sqlalchemy.orm import Session
 from app.models.global_role_model import GlobalRole, GlobalRoleType
 from typing import Optional
-from uuid import UUID # Import UUID
+# from uuid import UUID # Removed UUID import
 
 class GlobalRoleRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_user_internal_id(self, user_internal_id: UUID) -> Optional[GlobalRole]: # Changed type to UUID
+    def get_by_user_internal_id(self, user_internal_id: int) -> Optional[GlobalRole]: # Changed type to int
         """Get global role by user internal ID"""
         return self.db.query(GlobalRole).filter(GlobalRole.user_id == user_internal_id).first()
 
@@ -19,7 +19,7 @@ class GlobalRoleRepository:
         self.db.refresh(role)
         return role
 
-    def create_or_update(self, user_internal_id: UUID, role_type: GlobalRoleType) -> GlobalRole: # Changed type to UUID
+    def create_or_update(self, user_internal_id: int, role_type: GlobalRoleType) -> GlobalRole: # Changed type to int
         """Create or update user global role"""
         existing_role = self.get_by_user_internal_id(user_internal_id)
         if existing_role:
@@ -31,7 +31,7 @@ class GlobalRoleRepository:
             role_data = {"user_id": user_internal_id, "role_type": role_type}
             return self.create(role_data)
 
-    def delete(self, user_internal_id: UUID) -> bool: # Changed type to UUID
+    def delete(self, user_internal_id: int) -> bool: # Changed type to int
         """Delete user's global role"""
         role = self.get_by_user_internal_id(user_internal_id)
         if role:

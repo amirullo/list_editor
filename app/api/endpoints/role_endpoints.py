@@ -52,3 +52,24 @@ def get_global_role(
         message="Global role retrieved successfully",
         data=GlobalRoleInDB.model_validate(role)
     )
+
+@router.delete("/roles/global/{target_user_internal_id}", response_model=GlobalRoleResponse)
+def delete_global_role(
+    target_user_internal_id: int,
+    user_internal_id: int = Depends(get_current_user_id), # Authenticated user
+    global_role_service: GlobalRoleService = Depends(get_global_role_service)
+):
+    """
+    Delete the global role for a specific user.
+    """
+    logger.info(f"delete_global_role: target_user_internal_id={target_user_internal_id}, authenticated_user_internal_id={user_internal_id}")
+    
+    deleted = global_role_service.delete_role(target_user_internal_id)
+    if not deleted:
+        logger.warning(f"delete_global_role: Global role not found for user {target_user_internal_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global role not found for this user")
+    
+    return GlobalRoleResponse(
+        message="Global role deleted successfully",
+        data=None
+    )
