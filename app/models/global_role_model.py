@@ -4,8 +4,8 @@ from .base import BaseModel
 import enum
 
 class GlobalRoleType(enum.Enum):
-    CLIENT = "client"
-    WORKER = "worker"
+    CLIENT = "CLIENT"
+    WORKER = "WORKER"
 
 class GlobalRole(BaseModel):
     __tablename__ = "global_roles"

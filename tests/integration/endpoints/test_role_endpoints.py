@@ -151,7 +151,7 @@ def test_create_global_role_invalid_role_type():
     # Assert
     assert response.status_code == 422 # Unprocessable Entity for validation errors
     response_data = response.json()
-    assert "Input should be 'client' or 'worker'" in response_data["detail"][0]["msg"] # Updated assertion
+    assert "Input should be 'CLIENT' or 'WORKER'" in response_data["detail"][0]["msg"] # Updated assertion
 
 def test_delete_global_role_success():
     # Arrange

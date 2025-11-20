@@ -30,6 +30,8 @@ class ProjectUser(BaseModel):
 
 class Project(ProjectBase):
     id: int
+    created_at: datetime # Added created_at
+    updated_at: Optional[datetime] = None # Added updated_at
     steps: TypeList['Step'] = []
     project_users: TypeList[ProjectUser] = [] # Renamed from 'participants'
 

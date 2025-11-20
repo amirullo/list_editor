@@ -42,7 +42,8 @@ def assign_global_role(external_user_id: str, role_type: str) -> Dict[str, Any]:
         "Content-Type": "application/json",
         "X-User-ID": external_user_id
     }
-    payload = {"role_type": role_type}
+    # Convert role_type to uppercase to match the enum values
+    payload = {"role_type": role_type.upper()}
     response = requests.post(f"{BASE_URL}/roles/global", headers=headers, json=payload)
     response.raise_for_status()
     return response.json()

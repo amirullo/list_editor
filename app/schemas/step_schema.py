@@ -21,6 +21,8 @@ class StepUpdate(StepBase):
 
 class Step(StepBase):
     id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     sub_steps: List['Step'] = []
 
     model_config = ConfigDict(from_attributes=True)

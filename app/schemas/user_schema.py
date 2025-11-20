@@ -1,4 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+from typing import Optional
 
 class UserBase(BaseModel):
     external_id: str = Field(..., description="User's unique external identifier")
@@ -10,6 +12,8 @@ class UserCreate(UserBase):
 
 class UserResponse(BaseModel):
     external_id: str
-    internal_id: str
+    internal_id: int # Changed from str to int
+    created_at: Optional[datetime] = None # Added created_at
+    updated_at: Optional[datetime] = None # Added updated_at
 
     model_config = ConfigDict(from_attributes=True)
