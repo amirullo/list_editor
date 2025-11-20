@@ -3,7 +3,6 @@ from app.models.global_role_model import GlobalRole, GlobalRoleType
 from app.repositories.global_role_repository import GlobalRoleRepository
 from app.schemas.global_role_schema import GlobalRoleCreate, GlobalRoleInDB
 from app.utils.logger import logger
-# from uuid import UUID # Removed UUID import
 
 class GlobalRoleService:
     def __init__(self, global_role_repository: GlobalRoleRepository):

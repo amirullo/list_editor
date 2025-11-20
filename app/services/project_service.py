@@ -7,7 +7,6 @@ from app.models.project_model import Project
 from app.models.project_user_model import ProjectRoleType
 from app.core.exceptions import NotFoundException, ForbiddenException
 from app.utils.logger import logger # Import logger
-# from uuid import UUID # Import UUID - Removed UUID import as internal_id is int
 
 class ProjectService:
     def __init__(self, db: Session):

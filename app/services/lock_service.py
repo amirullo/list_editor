@@ -7,7 +7,6 @@ from .notification_service import NotificationService
 from app.models.lock_model import Lock
 from app.utils.logger import logger
 from sqlalchemy.orm import Session
-# from uuid import UUID # Import UUID - Removed UUID import as internal_id is int
 
 class LockService:
     def __init__(
